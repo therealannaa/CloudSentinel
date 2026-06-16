@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/therealannaa/CloudSentinel/docs/week1/manifest.schema.json",
+  "title": "CloudKC-Bench Ground-Truth Manifest",
+  "description": "The ground-truth answer key for one benchmark scenario. Emitted by the attack_simulator; consumed only by the mechanical matching function for scoring. Never given to the arms.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario_id", "category", "real_incident_reference", "stages"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Manifest schema version, e.g. '1.0'.",
+      "default": "1.0"
+    },
+    "scenario_id": {
+      "type": "string",
+      "pattern": "^(SD|KC|LS|EP|BN|HO)-[0-9]{2}$",
+      "description": "Unique scenario identifier, e.g. 'KC-02'."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "single_domain",
+        "multi_stage_kill_chain",
+        "low_and_slow",
+        "ephemeral",
+        "benign"
+      ]
+    },
+    "real_incident_reference": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Locatable grounding source, or 'N/A - synthetic benign baseline'."
+    },
+    "stages": {
+      "type": "array",
+      "description": "Ordered list of kill-chain stages. MUST be empty for benign scenarios.",
+      "items": { "$ref": "#/$defs/stage" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "category": { "const": "benign" } } },
+      "then": { "properties": { "stages": { "maxItems": 0 } } },
+      "else": { "properties": { "stages": { "minItems": 1 } } }
+    }
+  ],
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "ttp_id",
+        "ttp_name",
+        "telemetry_source",
+        "evidence_event_ids",
+        "timestamp_range"
+      ],
+      "properties": {
+        "stage_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based position in the kill chain; defines canonical order."
+        },
+        "ttp_id": {
+          "type": "string",
+          "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$",
+          "description": "ATT&CK technique or sub-technique ID, e.g. 'T1098.001'."
+        },
+        "ttp_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "telemetry_source": {
+          "type": "string",
+          "enum": ["CloudTrail", "VPC", "S3", "EC2"]
+        },
+        "evidence_event_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Event IDs that constitute this stage (placeholders in Week 1, bound in Week 2)."
+        },
+        "timestamp_range": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "[start, end]; relative ('T+0s') in Week 1, absolute ISO-8601 once logs exist."
+        }
+      }
+    }
+  }
+}
