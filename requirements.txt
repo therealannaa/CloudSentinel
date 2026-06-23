@@ -7,3 +7,4 @@ requests==2.34.2
 slack-sdk==3.42.0
 reportlab==4.5.1
 pytest==9.0.3
+jsonschema==4.25.1

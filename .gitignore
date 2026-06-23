@@ -9,3 +9,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Generated benchmark artifacts (reproducible via ./run_scenarios.sh)
+benchmark/manifests/
