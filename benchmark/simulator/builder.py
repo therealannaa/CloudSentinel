@@ -6,6 +6,14 @@ TTP_TEMPLATES, with deterministic timestamps seeded by scenario_id, plus a small
 amount of benign "noise" so the matching function's evidence-binding and FP
 accounting are exercised. The emitted event + manifest schema is identical to
 what the LocalStack backend would capture.
+
+Answer-key boundary: ground-truth events are NOT labelled in their payload. Their
+raw_json is indistinguishable from benign noise (just as a real attack API call is
+indistinguishable from a normal one in isolation — recovering the chain is the whole
+challenge). Ground truth lives only in the Event.is_ground_truth flag and the
+manifest's evidence_event_ids. When the arms are built (P3) they must read only the
+arm-visible columns (event_id, source, event_time, raw_json) from the events table
+and never the is_ground_truth column.
 """
 from __future__ import annotations
 
@@ -46,7 +54,13 @@ def ttp_name(ttp_id: str) -> str:
 # multiplicity (e.g. mass download / port scan emit several events).
 
 def _ct(event_name, **kw):
-    return {"eventName": event_name, "mitre_technique": kw.pop("ttp", None), **kw}
+    # `ttp=` is accepted at call sites for readability (it documents which technique
+    # the stage represents) but is deliberately NOT written into the event payload:
+    # real CloudTrail/VPC/S3 telemetry carries no MITRE label, and emitting one would
+    # leak the answer key to the arms. Ground truth lives in `is_ground_truth` + the
+    # manifest's evidence_event_ids, never in raw_json.
+    kw.pop("ttp", None)
+    return {"eventName": event_name, **kw}
 
 
 def _events_for(ttp_id, source):
@@ -80,33 +94,32 @@ def _events_for(ttp_id, source):
         return [_ct("RunInstances", ttp=t, region="us-west-2", instanceType="c5.large")]
     if t == "T1485":
         return [{"operation": "DeleteObject", "bucket": "prod-data",
-                 "key": f"obj-{i}", "mitre_technique": t} for i in range(8)]
+                 "key": f"obj-{i}"} for i in range(8)]
     if t == "T1530":
         if source == "S3":
             return [{"operation": "GetObject", "bucket": "prod-data",
-                     "key": f"obj-{i}", "http_status": 200, "mitre_technique": t}
+                     "key": f"obj-{i}", "http_status": 200}
                     for i in range(6)]
         return [_ct("GetBucketEncryption", ttp=t, bucket="prod-data", result="not-configured")]
     if t == "T1537":
         if source == "VPC":
             return [{"srcaddr": "10.0.0.7", "dstaddr": "198.51.100.9", "dstport": 443,
                      "protocol": "tcp", "action": "ACCEPT", "bytes": 250_000_000,
-                     "packets": 180_000, "mitre_technique": t}]
+                     "packets": 180_000}]
         return [{"operation": "CopyObject", "bucket": "attacker-acct-bucket",
-                 "key": "exfil.tar", "mitre_technique": t}]
+                 "key": "exfil.tar"}]
     if t == "T1046":
         return [{"srcaddr": "203.0.113.5", "dstaddr": "10.0.0.20", "dstport": p,
-                 "protocol": "tcp", "action": "REJECT", "bytes": 0, "mitre_technique": t}
+                 "protocol": "tcp", "action": "REJECT", "bytes": 0}
                 for p in range(20, 45)]
     if t == "T1571":
         return [{"srcaddr": "10.0.0.7", "dstaddr": "198.51.100.9", "dstport": 4444,
-                 "protocol": "tcp", "action": "ACCEPT", "bytes": 1024,
-                 "mitre_technique": t} for _ in range(4)]
+                 "protocol": "tcp", "action": "ACCEPT", "bytes": 1024} for _ in range(4)]
     if t == "T1496":
         return [{"eventName": "RunInstances", "instanceType": "p3.2xlarge",
-                 "state": "running", "mitre_technique": t}]
+                 "state": "running"}]
     # generic fallback: one event on the declared source
-    return [{"eventName": "GenericEvent", "mitre_technique": t, "source": source}]
+    return [{"eventName": "GenericEvent", "source": source}]
 
 
 # benign noise: not tied to any stage; never ground truth.

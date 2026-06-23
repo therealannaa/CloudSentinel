@@ -8,6 +8,7 @@ import pytest
 
 from benchmark.simulator.specs import SCENARIO_SPECS, dev_ids, heldout_ids, all_ids
 from benchmark.simulator.builder import build_scenario
+from benchmark.matching import score
 
 
 EXPECTED_COUNTS = {"SD": 12, "KC": 15, "LS": 12, "EP": 10, "BN": 10, "HO": 10}
@@ -55,6 +56,29 @@ class TestManifestsValid:
                 _, m = build_scenario(sid, spec)
                 assert len(m.stages) >= 3, f"{sid} should have >=3 stages"
                 assert len({s.telemetry_source for s in m.stages}) >= 1
+
+
+class TestNoAnswerKeyLeak:
+    """The synthetic payload must not label ground-truth events with their TTP.
+    raw_json is what the arms read; a `mitre_technique` field there would hand
+    them the answer. Ground truth must live only in is_ground_truth + manifest."""
+
+    @pytest.mark.parametrize("sid", list(SCENARIO_SPECS))
+    def test_raw_json_has_no_mitre_label(self, sid):
+        events, _ = build_scenario(sid, SCENARIO_SPECS[sid])
+        for e in events:
+            assert "mitre_technique" not in e.raw_json, \
+                f"{sid} leaks the TTP label in event {e.event_id}: {e.raw_json}"
+
+    @pytest.mark.parametrize("sid", list(SCENARIO_SPECS))
+    def test_ground_truth_intact_after_strip(self, sid):
+        """Scoring the manifest against itself is a perfect reconstruction —
+        proves the answer key is preserved in the manifest, not the payload."""
+        _, m = build_scenario(sid, SCENARIO_SPECS[sid])
+        result = score(m, m)
+        assert result.recall == 1.0 and result.precision == 1.0, \
+            f"{sid}: manifest self-score not perfect ({result.to_dict()})"
+        assert result.fp == 0 and result.fn == 0
 
 
 class TestDeterminism:
