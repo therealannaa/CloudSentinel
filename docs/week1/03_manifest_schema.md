@@ -3,6 +3,11 @@
 **Owner:** Atishay | 🔒 **FREEZE-FIRST** · ⚠️ **Anna's Week-2 collectors/simulator depend on this**
 **Canonical contract:** [manifest.schema.json](manifest.schema.json) (JSON Schema, draft 2020-12)
 
+> **v3 (journal) — changed from v2:** added an optional `authorship` object (`author`, `reviewer`,
+> `review_date`, `authored_before_system_final`) to record the **inter-rater check** and **held-out
+> authorship-separation** provenance required at journal tier (v3 §4.3). All else unchanged; the
+> `scenario_id` pattern already covers ~70 scenarios.
+
 > **Why this document exists (plain language).** The manifest is the **answer key** for a scenario — the
 > machine-readable truth of what the attack actually did: which stages, in what order, mapped to which ATT&CK
 > techniques, evidenced by which log events, at what times. Everything downstream depends on it: the
@@ -30,6 +35,7 @@ The manifest is **only ever used for scoring** and is **never given to the arms*
 | `category` | enum | yes | One of `single_domain`, `multi_stage_kill_chain`, `low_and_slow`, `ephemeral`, `benign`. |
 | `real_incident_reference` | string | yes | Locatable grounding source, or `"N/A - synthetic benign baseline"`. |
 | `stages` | array | yes | Ordered list of stage objects (§3). **Empty `[]` for benign scenarios.** |
+| `authorship` | object | no | `{author, reviewer, review_date, authored_before_system_final}` — inter-rater & held-out provenance (v3 §4.3). |
 | `schema_version` | string | no | Manifest schema version, e.g. `"1.0"`. Recommended for forward-compat. |
 
 ## 3. Stage object fields

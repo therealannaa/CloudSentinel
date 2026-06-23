@@ -1,7 +1,14 @@
 # Clock Model — Cross-Service Log Delivery Lag/Skew
 
 **Owner:** Anna
-**Status:** TEMPLATE (Week 1). Results table is filled with **measured** values in Week 2.
+**Status:** TEMPLATE (P1). Results tables filled with **measured** values in P2 (LocalStack) and on
+budget-approval (real AWS).
+
+> **v3 (journal) — changed from v2:** now **dual-environment**. Two measured lag tables: one for LocalStack
+> (the reproducibility layer, measured in P2) and one for **real AWS** (the externally-valid environment,
+> measured once the budget is approved — `10_real_aws_setup.md`). Real-AWS lag (CloudTrail's 5–15 min S3
+> delivery, VPC Flow aggregation windows) is the one that defends temporal claims in the paper; LocalStack lag
+> is reported as the reproducibility check.
 
 > **Why this document exists (plain language).** The four telemetry sources do not arrive at the same time.
 > Real AWS CloudTrail can take 5–15 minutes to land in S3; VPC Flow uses its own aggregation windows; S3 and
@@ -33,7 +40,16 @@ and the **pairwise skew** between sources (e.g. CloudTrail vs VPC) that matters 
 > *experimental* environment (which is what the controlled A1–A4 runs use). Real-AWS lag is only relevant to
 > the GuardDuty stretch goal and must be reported separately if measured.
 
-## 3. Results table (FILL IN WEEK 2)
+## 3a. Results table — LocalStack (FILL IN P2)
+
+| Source | Median lag (s) | p95 lag (s) | Max lag (s) | n events |
+|--------|----------------|-------------|-------------|----------|
+| CloudTrail | _ | _ | _ | _ |
+| VPC Flow | _ | _ | _ | _ |
+| S3 | _ | _ | _ | _ |
+| EC2 | _ | _ | _ | _ |
+
+## 3b. Results table — Real AWS (FILL ON BUDGET APPROVAL)
 
 | Source | Median lag (s) | p95 lag (s) | Max lag (s) | n events |
 |--------|----------------|-------------|-------------|----------|

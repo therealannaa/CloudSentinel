@@ -3,6 +3,12 @@
 **Owner:** Atishay (drafts) · Anna (co-signs) | 🔒 **FREEZE-FIRST**
 **Status:** DRAFT — awaiting co-sign and date
 
+> **v3 (journal) — changed from v2:** RQ/H1/H2 are **unchanged**. Added: (a) the **formal power analysis**
+> (`08_power_analysis.md`) is a required, frozen input — categories below the computed n-threshold are
+> reported **descriptive-only** (no significance testing); (b) **dual-environment** reporting — real-AWS
+> results are the headline, LocalStack results are the reproducibility check; (c) the H1 margin must be
+> consistent with the minimum detectable effect from `08`.
+
 > **Why this document exists (plain language).** A pre-registration is a public, dated promise about *what
 > we will measure and what counts as success* — written **before** we have any results. It is the single most
 > important defence against the "you moved the goalposts after seeing the data" criticism that sinks
@@ -42,7 +48,9 @@ These are *configurations of the system*, identical in everything except the one
 
 - **Primary metric:** Recall (TPR) on the **multi-stage kill-chain category only** (`KC-*` scenarios).
 - **Pre-registered margin (TO BE CO-SIGNED):** the better of {A1, A2} exceeds A4 by **≥ 0.15 absolute
-  recall**, with the 95% bootstrap CI of the difference excluding 0.
+  recall**, with the 95% bootstrap CI of the difference excluding 0. *This margin must be ≥ the minimum
+  detectable effect computed in `08_power_analysis.md` at the frozen per-category n; if `08` shows 0.15 is
+  undetectable at our n, raise n or relax the margin **before** sign-off.*
 - **Decision:** *Supported* if the margin and CI condition both hold; otherwise *Refuted*. If A4 (rules-only)
   matches the LLM, the LLM's value evaporates — and **reporting that is itself the scientific contribution.**
 

@@ -1,72 +1,79 @@
-# Week 1 — Phase P1: Freeze Design
+# Phase P1 — Freeze Design (Journal-Tier, v3)
 
-**Project:** CloudKC-Bench — LLM Cross-Domain Correlation for AWS Kill-Chain Reconstruction
+**Project:** CloudKC-Bench — An Open Benchmark and Controlled Study of LLM Cross-Domain Correlation for AWS
+Multi-Stage Kill-Chain Reconstruction
 **Team:** Atishay & Anna | ISFCR, PES University | **Supervisor:** Dr. S. Nagasundari
-**Week 1 window:** June 16–22, 2026
+**Target venue:** IEEE TIFS / Computers & Security *(confirm with supervisor)*
+
+> **v3 (journal) — changed from v2:** This package was upgraded from the workshop-tier v2 plan to the
+> journal-tier v3 plan (`CloudSentinel_Journal_Plan_v3.md`). Scenario count 24 → **~70**; LocalStack → **real
+> AWS primary** (LocalStack as reproducibility layer); GuardDuty-only stretch → **3 external baselines**; plus
+> new journal-required artifacts: **formal power analysis, coverage-gap table, structured literature review,
+> failure-mode analysis, cost/latency as first-class results, inter-rater check.** v2 history is preserved in
+> git. The folder name `week1/` is kept (it is now the **P1 design-freeze package**, not a single calendar week).
 
 ---
 
-## What Phase P1 is (and why there is no code)
+## What Phase P1 is (and why there is still no experiment code)
 
-This project's primary deliverable is a **research benchmark for an IEEE CLOUD 2026 paper**, not just a
-working system. The most common reason security-ML papers get rejected is that the authors made measurement
-decisions *after* seeing results (confirmation bias, p-hacking, pseudo-replication). Week 1 prevents that by
-**writing down and freezing — in advance — every decision that could later be massaged**: the hypotheses, the
-pass/fail thresholds, the scenario set, the ground-truth format, and the scoring algorithm.
+The project's primary deliverable is a **journal-grade research benchmark**, not just a working system. The
+dominant reason security-ML papers are rejected is that measurement decisions were made *after* seeing
+results. P1 prevents that by writing down and freezing — in advance — every decision that could later be
+massaged: hypotheses, **pre-registered thresholds + a formal power analysis**, the ~70-scenario set, the
+ground-truth manifest format, the scoring algorithm, the baselines, and the novelty (coverage-gap) claim.
 
-> **The Week-1 rule (from the implementation plan):** *Neither person writes a line of infrastructure code
-> until this is done.* Week 1 produces **documents and schemas**, not running code.
+> **The P1 rule:** no experiment/infrastructure code until these docs are frozen. P1 produces **documents and
+> schemas**. The only executable artifacts are the **power-analysis script** (it computes the frozen
+> n-per-category) and the schema validator.
 
-There *is* already code in this repo (`collectors/`, `tools/`, `config.py`, `docker-compose.yml`, …). That
-was written under the pre-v2 understanding of the project. Under the v2 redesign it counts as **early
-Week-2/3 scaffolding**, not Week-1 work — it is kept and reused later, not rolled back. These Week-1 freeze
-documents become the **authoritative spec that the scaffolding must conform to** in Weeks 2–4.
+Pre-existing repo code (`collectors/`, `tools/`, `config.py`, `docker-compose.yml`, …) remains **Week-2/3
+scaffolding**; these freeze docs are the authoritative spec it must conform to.
 
 ---
 
-## The 8 deliverables
+## Deliverables
 
-| # | File | Owner | Freeze status |
-|---|------|-------|---------------|
+### P1 freeze package (`docs/week1/`)
+
+| # | File | Owner | Freeze |
+|---|------|-------|--------|
 | 0 | [00_README.md](00_README.md) (this file) | shared | — |
-| 1 | [01_pre_registration.md](01_pre_registration.md) — RQ, H1, H2, thresholds, frozen protocol | **Atishay** (Anna co-signs) | 🔒 |
-| 2 | [02_scenario_taxonomy.md](02_scenario_taxonomy.md) — 24 dev + held-out scenario catalog | **Atishay** (SD+KC) / Anna (LS, EP, BN, HO) | — |
+| 1 | [01_pre_registration.md](01_pre_registration.md) — RQ, H1, H2, thresholds, protocol | **Atishay** (Anna co-signs) | 🔒 |
+| 2 | [02_scenario_taxonomy.md](02_scenario_taxonomy.md) — **~70** scenario catalog | Atishay (SD+KC) / Anna (LS,EP,BN,HO) | — |
 | 3 | [03_manifest_schema.md](03_manifest_schema.md) + [manifest.schema.json](manifest.schema.json) | **Atishay** | 🔒 ⚠️ |
 | 4 | [04_matching_function_spec.md](04_matching_function_spec.md) | **Anna** | 🔒 ⚠️ |
 | 5 | [05_sqlite_state_cache_schema.md](05_sqlite_state_cache_schema.md) | **Atishay** | — |
-| 6 | [06_clock_model.md](06_clock_model.md) — template now, measured Week 2 | **Anna** | — |
+| 6 | [06_clock_model.md](06_clock_model.md) — dual-environment | **Anna** | — |
 | 7 | [07_sync_checkpoint_agenda.md](07_sync_checkpoint_agenda.md) | shared | — |
+| 8 | [08_power_analysis.md](08_power_analysis.md) + [power_analysis.py](power_analysis.py) — **NEW** | **Atishay** | 🔒 |
+| 9 | [09_coverage_gap_table.md](09_coverage_gap_table.md) — **NEW** (C1 novelty) | Anna | — |
+| 10 | [10_real_aws_setup.md](10_real_aws_setup.md) — **NEW** (budget-gated) | shared | — |
+| 11 | [11_external_baselines.md](11_external_baselines.md) — **NEW** (3 baselines) | Anna | — |
+| 12 | [12_literature_review.md](12_literature_review.md) — **NEW** (25–30 papers) | Anna | — |
+| 13 | [13_failure_mode_analysis_plan.md](13_failure_mode_analysis_plan.md) — **NEW** (C4, run in P4/P5) | shared | — |
+| 14 | [14_cost_latency_plan.md](14_cost_latency_plan.md) — **NEW** (C3 results) | Atishay | — |
+| 15 | [15_threats_to_validity.md](15_threats_to_validity.md) — **NEW** | shared | — |
 
-**Legend:** 🔒 = *freeze-first* (must be locked in writing before dependent work begins). ⚠️ = *blocking
-dependency* for the other person (Anna's Week-2 collectors depend on #3; Atishay's Week-3 arms depend on #4).
+**Master roadmap:** [../RESEARCH_PLAN_v3.md](../RESEARCH_PLAN_v3.md) — P1–P5 phases, owners, dates, gating, DoD.
 
----
-
-## Week-1 Definition of Done (from the implementation plan)
-
-- [ ] **Pre-registration** document signed, dated, and saved to the repo (`01_pre_registration.md`).
-- [ ] **Manifest schema** merged (`03_manifest_schema.md` + `manifest.schema.json`).
-- [ ] **Matching-function spec** merged (`04_matching_function_spec.md`).
-- [ ] **24 dev scenarios + held-out set authored**; held-out set marked to be sealed in Week 2
-      (`02_scenario_taxonomy.md`).
-- [ ] **Sync checkpoint** held with Dr. Nagasundari; decisions logged (`07_sync_checkpoint_agenda.md`).
-
-When all five boxes are checked, P1 is complete and Phase P2 (environment + benchmark generator) may begin.
+**Legend:** 🔒 freeze-first · ⚠️ blocking dependency for the other person.
 
 ---
 
-## How these documents relate to the existing repo
+## Definition of Done — P1 (journal, v3 §13 subset due in P1)
 
-- **`docs/schemas.md`** documents the v1 runtime **`Finding`** schema (what a *detector* emits at runtime).
-  The new **manifest** schema (#3) is the **ground-truth answer key** (what the attack *actually did*). These
-  are two different objects; both are kept. See #3 for the explicit distinction.
-- **`config.py`** already defines thresholds (`EXFIL_THRESHOLD_MB`, `PORT_SCAN_THRESHOLD`,
-  `MASS_DOWNLOAD_THRESHOLD`, `EPHEMERAL_INSTANCE_THRESHOLD`, approved regions). Week-1 docs reference these
-  rather than redefining them.
-- **`tools/mitre_lookup.py`** curates 19 ATT&CK-for-Cloud techniques; the scenario taxonomy (#2) grounds its
-  TTP IDs in that set wherever possible.
+- [ ] Pre-registration signed + dated (`01`).
+- [ ] **Formal power analysis written and frozen** (`08`); short categories flagged descriptive-only.
+- [ ] Manifest schema merged (`03` + `manifest.schema.json`).
+- [ ] Matching-function spec merged (`04`).
+- [ ] **~70 scenarios + held-out authored** with real-incident grounding (`02`); held-out marked for sealing.
+- [ ] **Inter-rater check** process defined; ≥20% of scenarios slated for independent review (`02`).
+- [ ] **Coverage-gap table** structure in place; competitor cells flagged "read the paper" (`09`).
+- [ ] External-baselines spec merged (`11`); literature-review skeleton merged (`12`).
+- [ ] Real-AWS setup + **budget estimate** drafted for supervisor sign-off (`10`).
+- [ ] Sync checkpoint held; venue / budget / LLMCloudHunter-scope decisions logged (`07`).
+
+The full 12-item *paper-submittable* DoD lives in [../RESEARCH_PLAN_v3.md](../RESEARCH_PLAN_v3.md) (§13).
 
 ## Glossary
-
-For definitions of every term used here (kill chain, TTP, ablation, bootstrap CI, pseudo-replication, …) see
-the project **study guide** (`cloudsentinel_study_guide.md`), "Quick Reference: Key Terms".
+See the project study guide (`cloudsentinel_study_guide.md`), "Quick Reference: Key Terms".

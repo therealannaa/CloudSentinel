@@ -1,7 +1,12 @@
 # SQLite State-Cache Schema — CloudKC-Bench
 
 **Owner:** Atishay
-**Status:** DRAFT design for Week-1 freeze. Tables created in code in Week 2.
+**Status:** DRAFT design for P1 freeze. Tables created in code in P2.
+
+> **v3 (journal) — changed from v2:** added `environment` (`real_aws`/`localstack`) for the dual-environment
+> design; broadened `runs.arm` to include the 3 external baselines (`GD`, `LCH`, `SIGMA`); added cost/latency
+> columns (`latency_ms`, `prefilter_events_in`, `prefilter_events_out`) feeding the C3 first-class results
+> (`14_cost_latency_plan.md`); added `author`/`reviewer` to `scenarios` (inter-rater check).
 
 > **Why this document exists (plain language).** SQLite is a database that lives in a single file
 > (`cloudsentinel.db`). It is the shared "memory" that ties the whole pipeline together: collectors write
@@ -38,6 +43,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
     category      TEXT NOT NULL,                    -- single_domain | multi_stage_kill_chain | ...
     is_held_out   INTEGER NOT NULL DEFAULT 0,       -- 1 = sealed held-out set
     manifest_path TEXT,                             -- path to the ground-truth manifest JSON
+    author        TEXT,                             -- scenario author (inter-rater check)
+    reviewer      TEXT,                             -- independent reviewer, or NULL
     created_at    TEXT NOT NULL
 );
 
@@ -45,6 +52,7 @@ CREATE TABLE IF NOT EXISTS scenarios (
 CREATE TABLE IF NOT EXISTS events (
     event_id          TEXT PRIMARY KEY,             -- stable id used in manifest evidence_event_ids
     scenario_id       TEXT NOT NULL REFERENCES scenarios(scenario_id),
+    environment       TEXT NOT NULL DEFAULT 'localstack', -- real_aws | localstack (dual-env)
     source            TEXT NOT NULL,                -- CloudTrail | VPC | S3 | EC2
     event_time        TEXT NOT NULL,               -- ISO-8601 UTC
     raw_json          TEXT NOT NULL,               -- original event payload
@@ -53,17 +61,21 @@ CREATE TABLE IF NOT EXISTS events (
     is_ground_truth   INTEGER NOT NULL DEFAULT 0   -- 1 if this event belongs to a manifest stage
 );
 
--- One row per (arm, scenario, seed) execution
+-- One row per (arm, scenario, seed, environment) execution
 CREATE TABLE IF NOT EXISTS runs (
-    run_id        TEXT PRIMARY KEY,                 -- uuid
-    arm           TEXT NOT NULL,                    -- A1 | A2 | A3 | A4
-    scenario_id   TEXT NOT NULL REFERENCES scenarios(scenario_id),
-    seed          INTEGER NOT NULL,                 -- repeated-measure index (>=3 per LLM arm)
-    model_version TEXT,                             -- pinned model id+date (held fixed across arms)
-    started_at    TEXT NOT NULL,
-    finished_at   TEXT,
-    token_cost    INTEGER,                          -- for C3 cost analysis
-    UNIQUE (arm, scenario_id, seed)
+    run_id              TEXT PRIMARY KEY,           -- uuid
+    arm                 TEXT NOT NULL,              -- A1 | A2 | A3 | A4 | GD | LCH | SIGMA
+    environment         TEXT NOT NULL,              -- real_aws | localstack
+    scenario_id         TEXT NOT NULL REFERENCES scenarios(scenario_id),
+    seed                INTEGER NOT NULL,           -- repeated-measure index (>=3 per LLM arm)
+    model_version       TEXT,                       -- pinned model id+date (held fixed across LLM arms)
+    started_at          TEXT NOT NULL,
+    finished_at         TEXT,
+    latency_ms          INTEGER,                    -- wall-clock ingest->output (C3 latency)
+    token_cost          INTEGER,                    -- token/API spend (C3 cost; ~0 for A4/GD/SIGMA)
+    prefilter_events_in  INTEGER,                   -- events before pre-filter (C3 filtering ratio)
+    prefilter_events_out INTEGER,                   -- events after pre-filter
+    UNIQUE (arm, scenario_id, seed, environment)
 );
 
 -- The reconstructed kill chain an arm produced (the scored output)

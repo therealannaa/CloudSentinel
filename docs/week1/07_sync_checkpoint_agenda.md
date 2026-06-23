@@ -1,8 +1,12 @@
-# Week-1 Sync Checkpoint — Agenda & Decision Log
+# P1 Sync Checkpoint — Agenda & Decision Log
 
 **Owner:** shared (Atishay + Anna) | **Attendee:** Dr. S. Nagasundari
-**When:** End of Week 1 (by June 22, 2026)
+**When:** End of P1
 **Status:** DRAFT agenda
+
+> **v3 (journal) — changed from v2:** added the three journal-tier supervisor decisions that block P2 (venue,
+> real-AWS budget, LLMCloudHunter scope — v3 §14), plus journal-scope sign-off. These are the items only the
+> supervisor can resolve; the rest of P1 proceeds on the LocalStack-first path regardless.
 
 > **Why this meeting exists (plain language).** Week 1 is the design freeze. Before anyone writes Week-2
 > code, the supervisor confirms the scope and framing, and the team records the answers to a few decisions
@@ -42,6 +46,21 @@
    `tools/`, `config.py`, …) is kept as Week-2/3 scaffolding; these freeze docs are now authoritative; no new
    infra code until the pre-registration is signed.
 
+### Journal-tier (v3) decisions — BLOCK P2 (v3 §14)
+
+8. **Journal venue (§14.1).** IEEE TIFS vs Computers & Security vs IEEE Access vs other — the bar and required
+   scope differ. Pick the target so we size effort correctly.
+
+9. **Real-AWS budget (§14.2) — BLOCKING.** Approve the estimated spend in `10_real_aws_setup.md` (~70
+   scenarios × 4 arms × seeds, + GuardDuty). Confirm who owns the account and the spend cap. Until approved we
+   stay LocalStack-first; real-AWS is the gated milestone.
+
+10. **LLMCloudHunter reimplementation scope (§14.3).** Faithful **partial** reimplementation (acceptable in
+    benchmark papers, documented deviations) vs **full** reimplementation — materially changes the P3 timeline.
+
+11. **Journal-scope sign-off.** Confirm the move from workshop (v2) to journal (v3): ~70 scenarios, real-AWS
+    primary, 3 external baselines, power analysis, failure-mode analysis, 25–30-paper review.
+
 ---
 
 ## Decision log (fill during/after the meeting)
@@ -57,6 +76,10 @@
 | 5c | Pinned model + budget + seeds | | | |
 | 6 | Matching-function decisions | | | |
 | 7 | v2 supersedes scaffolding | | | |
+| 8 | Journal venue | | | |
+| 9 | Real-AWS budget approval | | | |
+| 10 | LLMCloudHunter scope (partial/full) | | | |
+| 11 | Journal-scope sign-off (v3) | | | |
 
 ## Week-1 Definition of Done — final check
 

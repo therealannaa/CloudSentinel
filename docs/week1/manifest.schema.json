@@ -32,6 +32,20 @@
       "minLength": 1,
       "description": "Locatable grounding source, or 'N/A - synthetic benign baseline'."
     },
+    "authorship": {
+      "type": "object",
+      "description": "v3 journal: inter-rater check + held-out authorship-separation provenance (v3 §4.3).",
+      "additionalProperties": false,
+      "properties": {
+        "author": { "type": "string", "description": "Who authored the scenario." },
+        "reviewer": { "type": "string", "description": "Independent reviewer (not the author), or '' if not yet reviewed." },
+        "review_date": { "type": "string", "description": "Date of inter-rater review, or 'TBD'." },
+        "authored_before_system_final": {
+          "type": "boolean",
+          "description": "True if authored before the detection system's failure modes were known (required for held-out)."
+        }
+      }
+    },
     "stages": {
       "type": "array",
       "description": "Ordered list of kill-chain stages. MUST be empty for benign scenarios.",

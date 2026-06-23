@@ -1,7 +1,13 @@
 # Mechanical Matching Function — Specification
 
 **Owner:** Anna | 🔒 **FREEZE-FIRST** · ⚠️ **Atishay's Week-3 arms depend on this**
-**Status:** DRAFT spec (no implementation). Implemented & unit-tested in Week 2.
+**Status:** DRAFT spec (no implementation). Implemented & unit-tested in P2.
+
+> **v3 (journal) — changed from v2:** the **3 external baselines** (GuardDuty `GD`, LLMCloudHunter `LCH`,
+> community Sigma `SIGMA` — see `11_external_baselines.md`) must emit the **same reconstructed-chain schema**
+> as A1–A4, or be wrapped by a **documented, frozen adapter** that maps their native output onto stages
+> (`stage_id`, `ttp_id`, `telemetry_source`, evidence). The adapter mapping is published with the benchmark so
+> the comparison is not confounded by output format.
 
 > **Why this document exists (plain language).** This is the algorithm that grades the system. It takes what
 > an arm *claims* the kill chain was (its reconstructed chain) and the *true* manifest (`03`), and produces an
