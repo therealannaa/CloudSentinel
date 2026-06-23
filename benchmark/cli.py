@@ -14,10 +14,11 @@ import os
 import sys
 import tempfile
 
-from benchmark import runner, heldout, clock_model, state_cache, matching
+from benchmark import runner, heldout, clock_model, state_cache, matching, experiment, analysis
 from benchmark.manifest import Manifest
 from benchmark.simulator.specs import SCENARIO_SPECS, dev_ids, heldout_ids
 from benchmark.simulator.builder import build_scenario
+from benchmark.arms import ARMS
 
 
 def cmd_generate(args):
@@ -117,6 +118,29 @@ def cmd_selfcheck(args):
     return 0 if passed == len(checks) else 1
 
 
+def cmd_run_arms(args):
+    arms = [a.strip().upper() for a in args.arms.split(",")]
+    print(f"Running arms {arms} on set={args.set}, seeds={args.seeds}, env={args.environment} ...")
+    results = experiment.run_experiment(
+        arms=arms, scenario_set=args.set, seeds=args.seeds, db_path=args.db,
+        manifests_dir=args.manifests, environment=args.environment)
+    rows = analysis.per_category(results)
+    print(f"\n{len(results)} runs scored. Per-(arm, category) means "
+          "(seeds averaged to scenario, never pooled across categories):\n")
+    analysis.print_table(rows)
+    if args.csv:
+        analysis.to_csv(rows, args.csv)
+        print(f"\nWrote per-category results -> {args.csv}")
+    # honest note on which backend produced these
+    from benchmark.arms.llm_client import get_client
+    backend = get_client().name
+    print(f"\nLLM backend: {backend}"
+          + ("" if backend == "gemini" else
+             "  (deterministic offline backend — set GEMINI_API_KEY for real LLM arms; "
+             "comparative H1/H2 numbers are only meaningful with a real LLM + real telemetry)"))
+    return 0
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="benchmark", description="CloudKC-Bench P2 generator")
     p.add_argument("--db", default="cloudsentinel.db")
@@ -142,6 +166,16 @@ def build_parser():
 
     sc = sub.add_parser("selfcheck", help="run the whole P2 pipeline and report PASS/FAIL")
     sc.set_defaults(func=cmd_selfcheck)
+
+    ra = sub.add_parser("run-arms", help="run the A1-A4 ablation and score it")
+    ra.add_argument("--arms", default=",".join(ARMS))
+    ra.add_argument("--set", choices=["dev", "heldout", "all"], default="dev")
+    ra.add_argument("--seeds", type=int, default=3)
+    ra.add_argument("--manifests", default="benchmark/manifests")
+    ra.add_argument("--environment", default="synthetic",
+                    choices=["synthetic", "localstack", "real_aws"])
+    ra.add_argument("--csv", default=None)
+    ra.set_defaults(func=cmd_run_arms)
     return p
 
 

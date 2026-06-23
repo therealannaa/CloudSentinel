@@ -23,10 +23,18 @@ benchmark/
   heldout.py       held-out sealing + tamper detection
   clock_model.py   cross-service delivery-lag measurement (docs/week1/06)
   runner.py        generate a scenario set end-to-end
+  experiment.py    P3 ablation runner (A1-A4 x scenarios x seeds -> scored)
+  analysis.py      per-category aggregation + C3 cost/latency table
   cli.py           command-line entry points
   simulator/
     specs.py       machine-readable mirror of the taxonomy (docs/week1/02)
     builder.py     deterministic telemetry + manifest generator
+  arms/            the four ablation arms (P3)
+    signatures.py  event -> candidate TTP detection knowledge
+    prefilter.py   deterministic instrumented pre-filter (C3)
+    correlate.py   candidates -> reconstructed kill chain (coordinator)
+    llm_client.py  pluggable LLM backend (deterministic offline | Gemini)
+    arms_impl.py   A1 (multi-agent) / A2 (single) / A3 (raw) / A4 (rules-only)
 ```
 
 ### Quick start
@@ -45,7 +53,10 @@ python -m benchmark.cli summary
 python -m benchmark.cli seal-heldout
 python -m benchmark.cli clock --set dev
 
-pytest                                    # 195 tests (matching, manifests, pipeline)
+# P3 — run the four-arm ablation and score it
+python -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --csv results.csv
+
+pytest                                    # 365 tests (P2 + P3)
 ```
 
 `selfcheck` generates all 69 scenarios in a throwaway workspace and verifies
@@ -76,3 +87,34 @@ The simulator has two backends, both emitting the identical event + manifest sch
 - Clock model measured (synthetic now; LocalStack/real-AWS per `docs/week1/06`).
 
 Generated manifests/DB are reproducible and git-ignored; regenerate with `run_scenarios.sh`.
+
+---
+
+## Phase P3 — Four-arm ablation (`benchmark/arms/`)
+
+`run-arms` runs A1–A4 over a scenario set across seeds, scores each reconstruction with the matching function,
+and writes `runs` / `reconstructed_stages` / `scores` to the state cache, plus a per-category results table.
+
+| Arm | Configuration | Isolates |
+|-----|---------------|----------|
+| A1 | pre-filter + 4 domain hunters + coordinator | reference (full system) |
+| A2 | pre-filter + single generalised agent | A1 vs A2 → multi-agent value (H2) |
+| A3 | **no** pre-filter + single agent on raw logs | A2 vs A3 → pre-filter value (C3) |
+| A4 | pre-filter + deterministic rules, **no LLM** | A1/A2 vs A4 → LLM value (H1) |
+
+**LLM backend.** A1–A3 use a pluggable client: the **deterministic** offline backend (default — runs with no
+API key, so the whole ablation is testable) or **Gemini** (auto-selected when `GEMINI_API_KEY` is set). A4 is
+pure rules. The arms read only arm-visible columns (`event_id`, `source`, `event_time`, `raw_json`) — never
+`is_ground_truth` (the answer-key boundary, enforced by `ArmEvent` and tests).
+
+> **Honest status.** The full P3 machinery — pre-filter (instrumented), A4 rules, the four arms, the runner,
+> scoring, multi-seed, per-category analysis with C3 cost/latency — is complete and tested (`run-arms` scores
+> 708 runs on the dev set). With the **deterministic** backend the LLM arms (A1/A2/A3) detect identically to
+> A4 and differ only in cost/latency, so **comparative H1/H2 numbers are NOT meaningful yet** — they require
+> (a) a real LLM via `GEMINI_API_KEY` and (b) real telemetry (LocalStack/real-AWS). The pipeline is ready to
+> produce real results the moment those two inputs are supplied.
+
+### Still ahead (P3 completion → P4)
+Real-LocalStack telemetry capture (boto3 + collector→`events` wiring + Zeek); external baselines (GuardDuty,
+LLMCloudHunter reimpl, community Sigma — `docs/week1/11`); then P4 statistics (bootstrap CIs, Holm-Bonferroni,
+effect sizes per `docs/week1/08`).
