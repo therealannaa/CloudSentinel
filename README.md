@@ -173,31 +173,60 @@ python3 -m benchmark.cli run-arms --environment localstack    # score arms on it
 > offline with a fake boto3 (`tests/test_localstack_backend.py`); run the commands above on a networked host
 > to capture live.
 
-### Real LLM (Gemini)
+### Real LLM — Local Ollama (free, no quota, reproducible) ⭐ recommended
 
-A1–A3 use a deterministic offline backend by default. Provide a key to switch to real Gemini — no code change:
+A1–A3 use a deterministic offline backend by default. Point them at a **local Ollama** model for real
+LLM reasoning at **zero cost, no API key, no rate limits** — and a locally-hosted open model is a
+reproducibility win for the paper (anyone can re-run it). Works on any laptop with Ollama.
 
+**One-time setup (any laptop):**
 ```bash
-pip install google-generativeai
-export GEMINI_API_KEY=...                       # GEMINI_MODEL pins the version
-export GEMINI_MODEL=gemini-1.5-flash            # pick a model your plan can call
+# 1. install Ollama — macOS: `brew install ollama` or download from https://ollama.com
+#    (Linux: `curl -fsSL https://ollama.com/install.sh | sh`)
+# 2. start the server (own terminal, or it runs as a background service)
+ollama serve
 
-# 1) cheap smoke test FIRST — one scenario, one arm, one seed = ~1 API call
-python3 -m benchmark.cli run-arms --arms A2 --set dev --limit 1 --seeds 1 --environment localstack
-
-# 2) once that works, the full ablation
-python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --environment localstack --csv results_gemini.csv
-# -> "LLM backend: gemini"; A1/A2/A3 now reason over raw telemetry (real H1/H2 signal)
+# 3. pull a model sized to your RAM (see table below)
+ollama pull llama3.1            # 8B, ~4.7 GB — needs ~8 GB RAM
 ```
 
-> **Quota note.** A `429 / RESOURCE_EXHAUSTED, limit: 0` means your key's plan can't call that model (free tier
-> doesn't cover `gemini-2.0-flash`, or the daily cap is hit). Fixes: `export GEMINI_MODEL=gemini-1.5-flash`,
-> enable billing, or wait for the window to reset. The client retries transient rate-limits with backoff and
-> aborts with actionable guidance rather than writing misleading zero-scores. **Cost is real** — the full run
-> is ~1000+ calls (A1 alone = 4 hunter calls × 59 scenarios × 3 seeds); use `--limit` and a small `--seeds`
-> while iterating. A4 and the deterministic backend make **no** API calls.
+**Pick a model for your hardware:**
 
-The retry/backoff, quota-abort, and prompt/parse paths are unit-tested offline (`tests/test_llm_backend.py`).
+| Laptop RAM | Model (`ollama pull …`) | Notes |
+|---|---|---|
+| 8 GB (e.g. MacBook Air M-series) | `llama3.2:3b` or `qwen2.5:7b` | small + fast; lower accuracy |
+| 16 GB | `llama3.1` (8B) or `gemma2:9b` | good balance — recommended |
+| 32 GB+ | `qwen2.5:14b`, `gemma2:27b` | best quality, slower |
+
+**Run the arms against it:**
+```bash
+export LLM_BASE_URL=http://localhost:11434/v1
+export LLM_API_KEY=ollama
+export LLM_MODEL=llama3.1                       # match what you pulled
+
+# or just: ./run_ollama.sh                       # does the smoke test for you
+
+# smoke test first — 1 scenario, 1 arm, 1 seed
+python3 -m benchmark.cli run-arms --arms A2 --set dev --limit 1 --seeds 1 --environment localstack
+# -> "LLM backend: ollama"
+
+# then the full ablation (no quota to worry about — just time)
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --environment localstack --csv results_ollama.csv
+```
+
+> Tips: the **full run is ~1000+ local generations** (A1 = 4 hunter calls × 59 × 3) — slow on a small laptop,
+> so start with `--limit 5 --seeds 1`. A smaller/faster model + fewer seeds while iterating; scale up for the
+> final numbers. A4 and the deterministic backend make **no** LLM calls. The client robustly extracts JSON
+> even when a small model wraps it in prose, and raises a clear error (with `ollama serve` guidance) if the
+> server is unreachable. Record the exact model in `docs/week1/01` as the pinned LLM.
+
+### Alternative — hosted APIs (Gemini / Groq / OpenRouter / GitHub Models)
+
+The same `LLM_BASE_URL` adapter works with any OpenAI-compatible endpoint (Groq, OpenRouter, GitHub Models,
+Cerebras…): set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. For Gemini specifically, leave `LLM_BASE_URL`
+unset and set `GEMINI_API_KEY` + `GEMINI_MODEL` (use `gemini-1.5-flash` — `gemini-2.0-flash` shows
+`limit: 0` on the free tier). All paths retry transient rate-limits and abort cleanly rather than writing
+misleading zero-scores; all are unit-tested offline (`tests/test_llm_backend.py`).
 
 ### What P2 delivers (Definition of Done)
 
