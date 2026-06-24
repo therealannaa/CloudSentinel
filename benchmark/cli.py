@@ -147,6 +147,17 @@ def cmd_run_arms(args):
     return 0
 
 
+def cmd_analyze(args):
+    from benchmark import stats
+    report = stats.full_report(db_path=args.db, environment=args.environment,
+                              h1_margin=args.h1_margin, h2_band=args.h2_band)
+    stats.print_report(report)
+    if args.csv and not report.get("error"):
+        stats.to_csv(report["per_category_recall"], args.csv)
+        print(f"\nWrote per-category recall (with CIs) -> {args.csv}")
+    return 1 if report.get("error") else 0
+
+
 def cmd_localstack_check(args):
     from benchmark.simulator import localstack_backend as lsb
     try:
@@ -187,6 +198,14 @@ def build_parser():
 
     lc = sub.add_parser("localstack-check", help="check LocalStack reachability (needs boto3 + compose up)")
     lc.set_defaults(func=cmd_localstack_check)
+
+    an = sub.add_parser("analyze", help="P4 stats: H1/H2 verdicts + bootstrap CIs from a past run")
+    an.add_argument("--environment", default=None,
+                    help="filter to runs from this environment (synthetic|localstack|real_aws)")
+    an.add_argument("--h1-margin", type=float, default=0.15, dest="h1_margin")
+    an.add_argument("--h2-band", type=float, default=0.05, dest="h2_band")
+    an.add_argument("--csv", default=None)
+    an.set_defaults(func=cmd_analyze)
 
     ra = sub.add_parser("run-arms", help="run the A1-A4 ablation and score it")
     ra.add_argument("--arms", default=",".join(ARMS))

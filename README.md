@@ -136,7 +136,10 @@ python3 -m benchmark.cli clock --set dev
 # P3 — run the four-arm ablation and score it
 python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --csv results.csv
 
-pytest                                    # 521 tests (P1-P3 + backends)
+# P4 — H1/H2 verdicts + bootstrap CIs + effect sizes from the last run
+python3 -m benchmark.cli analyze --csv results_by_category.csv
+
+pytest                                    # 543 tests (P1-P4 + backends)
 ```
 
 `selfcheck` generates all 69 scenarios in a throwaway workspace and verifies
