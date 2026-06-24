@@ -220,6 +220,37 @@ python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --envir
 > even when a small model wraps it in prose, and raises a clear error (with `ollama serve` guidance) if the
 > server is unreachable. Record the exact model in `docs/week1/01` as the pinned LLM.
 
+### Windows quickstart (RTX 2050 / any NVIDIA laptop) — fastest path to results
+
+This path needs **no Docker and no AWS** — just Python + Ollama. Telemetry is generated synthetically (the
+arms run on the exact same scenarios); swap to `--environment localstack` later if you want real AWS telemetry.
+
+```powershell
+# 1. clone + enter
+git clone https://github.com/therealannaa/CloudSentinel.git
+cd CloudSentinel
+git checkout dev
+
+# 2. minimal deps (NOT the full requirements.txt)
+pip install -r requirements-bench.txt
+
+# 3. Ollama: install from https://ollama.com/download/windows  (auto-uses the RTX 2050 GPU)
+ollama pull llama3.2:3b          # 3B fits a 4 GB RTX 2050 nicely; qwen2.5:3b also good
+
+# 4. sanity-check the whole pipeline (no LLM, no network) — should print 10/10 PASS
+python -m benchmark.cli selfcheck
+
+# 5. run the arms on a local model — smoke test then full
+$env:LLM_MODEL = "llama3.2:3b"
+.\run_ollama.ps1                 # smoke: 1 scenario  ->  "LLM backend: ollama"
+.\run_ollama.ps1 full            # full A1-A4 x dev x 3 seeds -> results_ollama.csv
+```
+
+Notes for Windows: use **`python`** (not `python3`); run the `.ps1` from PowerShell. The RTX 2050 (4 GB VRAM)
+runs **3B models on-GPU** smoothly — prefer `llama3.2:3b` / `qwen2.5:3b`; 7B models work but partly offload to
+CPU (slower). `pytest` runs the 530-test suite identically on Windows. Real LocalStack telemetry is optional
+and needs Docker Desktop + `pip install boto3`.
+
 ### Alternative — hosted APIs (Gemini / Groq / OpenRouter / GitHub Models)
 
 The same `LLM_BASE_URL` adapter works with any OpenAI-compatible endpoint (Groq, OpenRouter, GitHub Models,
