@@ -141,6 +141,18 @@ def cmd_run_arms(args):
     return 0
 
 
+def cmd_localstack_check(args):
+    from benchmark.simulator import localstack_backend as lsb
+    try:
+        clients = lsb.make_clients()
+    except lsb.LocalStackUnavailable as e:
+        print(f"localstack: UNAVAILABLE — {e}")
+        return 1
+    ok = lsb.check_connectivity(clients)
+    print(f"localstack at {lsb.LOCALSTACK_URL}: {'REACHABLE' if ok else 'NOT REACHABLE (run docker compose up -d)'}")
+    return 0 if ok else 1
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="benchmark", description="CloudKC-Bench P2 generator")
     p.add_argument("--db", default="cloudsentinel.db")
@@ -166,6 +178,9 @@ def build_parser():
 
     sc = sub.add_parser("selfcheck", help="run the whole P2 pipeline and report PASS/FAIL")
     sc.set_defaults(func=cmd_selfcheck)
+
+    lc = sub.add_parser("localstack-check", help="check LocalStack reachability (needs boto3 + compose up)")
+    lc.set_defaults(func=cmd_localstack_check)
 
     ra = sub.add_parser("run-arms", help="run the A1-A4 ablation and score it")
     ra.add_argument("--arms", default=",".join(ARMS))

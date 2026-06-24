@@ -7,7 +7,7 @@ services:
       - "4566:4566"
       - "4510-4559:4510-4559"
     environment:
-      - SERVICES=s3,ec2,cloudtrail,iam
+      - SERVICES=s3,ec2,cloudtrail,iam,sts,secretsmanager,logs
       - DEFAULT_REGION=ap-south-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test

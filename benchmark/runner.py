@@ -28,12 +28,25 @@ def generate(scenario_set="dev", db_path="cloudsentinel.db",
     os.makedirs(manifests_dir, exist_ok=True)
     conn = state_cache.init_state_cache(db_path)
 
+    # choose backend: synthetic (default, offline) or real LocalStack execution
+    ls_clients = None
+    if environment == "localstack":
+        from benchmark.simulator import localstack_backend as lsb
+        ls_clients = lsb.make_clients()
+        if not lsb.check_connectivity(ls_clients):
+            raise lsb.LocalStackUnavailable(
+                "cannot reach LocalStack at LOCALSTACK_URL — run `docker compose up -d`")
+
     results = {}
     for sid in _ids_for(scenario_set):
         spec = SCENARIO_SPECS[sid]
-        events, manifest = build_scenario(sid, spec, author=author)
-        for e in events:
-            e.environment = environment
+        if environment == "localstack":
+            from benchmark.simulator import localstack_backend as lsb
+            events, manifest = lsb.run_scenario_localstack(sid, spec, ls_clients, author=author)
+        else:
+            events, manifest = build_scenario(sid, spec, author=author)
+            for e in events:
+                e.environment = environment
 
         errors = manifest.validate()
         if errors:
