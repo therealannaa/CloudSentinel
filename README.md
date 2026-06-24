@@ -122,21 +122,21 @@ benchmark/
 ```bash
 pip install -r requirements.txt          # adds jsonschema
 
-python -m benchmark.cli selfcheck         # run the WHOLE pipeline, report PASS/FAIL
+python3 -m benchmark.cli selfcheck         # run the WHOLE pipeline, report PASS/FAIL
 
 ./run_scenarios.sh dev                    # 59 dev scenarios -> manifests + events
 ./run_scenarios.sh all                    # dev + held-out, then seal held-out
 
 # or the CLI directly:
-python -m benchmark.cli generate --set all
-python -m benchmark.cli summary
-python -m benchmark.cli seal-heldout
-python -m benchmark.cli clock --set dev
+python3 -m benchmark.cli generate --set all
+python3 -m benchmark.cli summary
+python3 -m benchmark.cli seal-heldout
+python3 -m benchmark.cli clock --set dev
 
 # P3 — run the four-arm ablation and score it
-python -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --csv results.csv
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --csv results.csv
 
-pytest                                    # 365 tests (P2 + P3)
+pytest                                    # 521 tests (P1-P3 + backends)
 ```
 
 `selfcheck` generates all 69 scenarios in a throwaway workspace and verifies
@@ -161,9 +161,9 @@ The simulator has two backends, both emitting the identical event + manifest sch
 ```bash
 docker compose up -d
 pip install boto3
-python -m benchmark.cli localstack-check                     # REACHABLE?
+python3 -m benchmark.cli localstack-check                     # REACHABLE?
 ENVIRONMENT=localstack ./run_scenarios.sh dev                # capture REAL telemetry
-python -m benchmark.cli run-arms --environment localstack    # score arms on it
+python3 -m benchmark.cli run-arms --environment localstack    # score arms on it
 ```
 
 > Honest scope: LocalStack community CloudTrail history is limited, so we capture the calls we issue
@@ -180,7 +180,7 @@ A1–A3 use a deterministic offline backend by default. Provide a key to switch 
 ```bash
 pip install google-generativeai
 export GEMINI_API_KEY=...          # GEMINI_MODEL pins the version
-python -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3
 # -> "LLM backend: gemini"; A1/A2/A3 now reason over raw telemetry (real H1/H2 signal)
 ```
 
