@@ -16,9 +16,31 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import time
 
 from benchmark.arms.base import ArmEvent, Candidate
 from benchmark.arms import signatures
+
+
+class LLMError(RuntimeError):
+    """Raised when the real LLM backend fails in a way the experiment can't recover
+    from (e.g. quota exhausted after retries). Carries actionable guidance."""
+
+
+_RETRYABLE = {"ResourceExhausted", "ServiceUnavailable", "TooManyRequests",
+              "InternalServerError", "DeadlineExceeded"}
+
+
+def _retry_delay(exc, attempt):
+    """Seconds to wait before the next attempt. Prefer the server's hint, else
+    exponential backoff capped at 30s."""
+    hint = getattr(exc, "retry_delay", None)
+    secs = getattr(hint, "seconds", None) if hint is not None else None
+    if not secs:
+        m = re.search(r"retry in ([\d.]+)s", str(exc))
+        secs = float(m.group(1)) if m else None
+    return min(secs if secs else 2 ** attempt, 30)
 
 
 def _est_tokens(events):
@@ -59,12 +81,34 @@ class GeminiClient:
         "list of objects: [{{\"event_id\": str, \"ttp_id\": str}}]. Events:\n{events}"
     )
 
+    def _generate(self, prompt, max_retries=5):
+        """Call Gemini with retry/backoff on transient/quota errors. Raises a clean
+        LLMError if it can't succeed (so the experiment fails loudly, never with
+        silently-empty results that would corrupt the scores)."""
+        last = None
+        for attempt in range(max_retries):
+            try:
+                return self._model.generate_content(
+                    prompt, generation_config={"temperature": 0.7,
+                                               "response_mime_type": "application/json"})
+            except Exception as e:  # noqa: BLE001 - classify by type name (lazy SDK)
+                last = e
+                if type(e).__name__ not in _RETRYABLE or attempt == max_retries - 1:
+                    break
+                time.sleep(_retry_delay(e, attempt))
+        raise LLMError(
+            f"Gemini call failed ({type(last).__name__}): {last}\n"
+            "  - Quota/limit=0 usually means this model isn't on your free tier or the "
+            "daily cap is hit.\n"
+            "  - Try a free-tier model:  export GEMINI_MODEL=gemini-1.5-flash\n"
+            "  - Or enable billing, or wait for the quota window to reset.\n"
+            "  - Validate cheaply first:  run-arms --arms A2 --limit 1 --seeds 1") from last
+
     def analyze(self, events, role="generalist", seed=0):
         payload = [{"event_id": e.event_id, "source": e.source,
                     "event_time": e.event_time, **e.raw} for e in events]
         prompt = self._PROMPT.format(role=role, events=json.dumps(payload)[:200_000])
-        resp = self._model.generate_content(
-            prompt, generation_config={"temperature": 0.7, "response_mime_type": "application/json"})
+        resp = self._generate(prompt)
         by_id = {e.event_id: e for e in events}
         candidates = []
         try:

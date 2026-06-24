@@ -119,11 +119,17 @@ def cmd_selfcheck(args):
 
 
 def cmd_run_arms(args):
+    from benchmark.arms.llm_client import LLMError
     arms = [a.strip().upper() for a in args.arms.split(",")]
-    print(f"Running arms {arms} on set={args.set}, seeds={args.seeds}, env={args.environment} ...")
-    results = experiment.run_experiment(
-        arms=arms, scenario_set=args.set, seeds=args.seeds, db_path=args.db,
-        manifests_dir=args.manifests, environment=args.environment)
+    scope = f"set={args.set}" + (f", limit={args.limit}" if args.limit else "")
+    print(f"Running arms {arms} on {scope}, seeds={args.seeds}, env={args.environment} ...")
+    try:
+        results = experiment.run_experiment(
+            arms=arms, scenario_set=args.set, seeds=args.seeds, db_path=args.db,
+            manifests_dir=args.manifests, environment=args.environment, limit=args.limit)
+    except LLMError as e:
+        print(f"\nLLM backend error — aborted before writing misleading scores:\n{e}")
+        return 2
     rows = analysis.per_category(results)
     print(f"\n{len(results)} runs scored. Per-(arm, category) means "
           "(seeds averaged to scenario, never pooled across categories):\n")
@@ -189,6 +195,8 @@ def build_parser():
     ra.add_argument("--manifests", default="benchmark/manifests")
     ra.add_argument("--environment", default="synthetic",
                     choices=["synthetic", "localstack", "real_aws"])
+    ra.add_argument("--limit", type=int, default=None,
+                    help="run only the first N scenarios (cheap smoke test for paid LLM runs)")
     ra.add_argument("--csv", default=None)
     ra.set_defaults(func=cmd_run_arms)
     return p

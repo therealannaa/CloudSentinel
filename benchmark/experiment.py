@@ -49,7 +49,8 @@ def _write_reconstruction(conn, run_id, chain):
 
 def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
                    db_path="cloudsentinel.db", manifests_dir="benchmark/manifests",
-                   environment="synthetic", model_version=None, auto_generate=True):
+                   environment="synthetic", model_version=None, auto_generate=True,
+                   limit=None):
     """Run the ablation. Returns a list of per-run result dicts.
 
     If the scenario set hasn't been generated into the cache yet, generates it
@@ -74,6 +75,8 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
     scen_rows = conn.execute(
         f"SELECT scenario_id, category, manifest_path FROM scenarios {where} ORDER BY scenario_id"
     ).fetchall()
+    if limit:
+        scen_rows = scen_rows[:limit]   # cheap smoke test (esp. for paid LLM runs)
 
     results = []
     for sr in scen_rows:

@@ -179,12 +179,25 @@ A1–A3 use a deterministic offline backend by default. Provide a key to switch 
 
 ```bash
 pip install google-generativeai
-export GEMINI_API_KEY=...          # GEMINI_MODEL pins the version
-python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3
+export GEMINI_API_KEY=...                       # GEMINI_MODEL pins the version
+export GEMINI_MODEL=gemini-1.5-flash            # pick a model your plan can call
+
+# 1) cheap smoke test FIRST — one scenario, one arm, one seed = ~1 API call
+python3 -m benchmark.cli run-arms --arms A2 --set dev --limit 1 --seeds 1 --environment localstack
+
+# 2) once that works, the full ablation
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --environment localstack --csv results_gemini.csv
 # -> "LLM backend: gemini"; A1/A2/A3 now reason over raw telemetry (real H1/H2 signal)
 ```
 
-The prompt/parse path is unit-tested offline with a mocked client (`tests/test_llm_backend.py`).
+> **Quota note.** A `429 / RESOURCE_EXHAUSTED, limit: 0` means your key's plan can't call that model (free tier
+> doesn't cover `gemini-2.0-flash`, or the daily cap is hit). Fixes: `export GEMINI_MODEL=gemini-1.5-flash`,
+> enable billing, or wait for the window to reset. The client retries transient rate-limits with backoff and
+> aborts with actionable guidance rather than writing misleading zero-scores. **Cost is real** — the full run
+> is ~1000+ calls (A1 alone = 4 hunter calls × 59 scenarios × 3 seeds); use `--limit` and a small `--seeds`
+> while iterating. A4 and the deterministic backend make **no** API calls.
+
+The retry/backoff, quota-abort, and prompt/parse paths are unit-tested offline (`tests/test_llm_backend.py`).
 
 ### What P2 delivers (Definition of Done)
 

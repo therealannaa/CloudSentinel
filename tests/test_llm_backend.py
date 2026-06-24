@@ -9,7 +9,7 @@ import pytest
 
 from benchmark.arms import llm_client
 from benchmark.arms.base import ArmEvent
-from benchmark.arms.llm_client import DeterministicClient, GeminiClient, get_client
+from benchmark.arms.llm_client import DeterministicClient, GeminiClient, get_client, LLMError
 
 
 def _events():
@@ -24,9 +24,14 @@ class TestBackendSelection:
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         assert get_client().name == "deterministic"
 
-    def test_falls_back_when_sdk_missing(self, monkeypatch):
-        # key present but SDK import fails -> graceful fallback to deterministic
+    def test_falls_back_when_client_construction_fails(self, monkeypatch):
+        # key present but the Gemini client can't be built (missing SDK / bad config)
+        # -> get_client must gracefully fall back to the deterministic backend
         monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+
+        def boom(*a, **k):
+            raise RuntimeError("no SDK / bad config")
+        monkeypatch.setattr(llm_client, "GeminiClient", boom)
         assert get_client(prefer_real=True).name == "deterministic"
 
     def test_deterministic_seed_invariant(self):
@@ -89,3 +94,50 @@ class TestGeminiClientParsing:
         c = self._client_with([], monkeypatch)
         c.analyze(_events(), role="S3 data")
         assert "S3 data" in c._model.last_prompt and "CreateAccessKey" in c._model.last_prompt
+
+
+class ResourceExhausted(Exception):
+    """Mimics google.api_core.exceptions.ResourceExhausted (classified by name)."""
+
+
+class TestRetryAndQuota:
+    def _client(self, model):
+        c = GeminiClient.__new__(GeminiClient)
+        c._model = model
+        return c
+
+    def test_retries_then_succeeds(self, monkeypatch):
+        monkeypatch.setattr(llm_client.time, "sleep", lambda *_: None)
+        calls = {"n": 0}
+
+        class FlakyModel:
+            def generate_content(self, prompt, generation_config=None):
+                calls["n"] += 1
+                if calls["n"] < 3:
+                    raise ResourceExhausted("retry in 1s")
+                return FakeResp(json.dumps([]))
+        c = self._client(FlakyModel())
+        cands, _ = c.analyze(_events())
+        assert calls["n"] == 3 and cands == []
+
+    def test_quota_raises_clean_llmerror(self, monkeypatch):
+        monkeypatch.setattr(llm_client.time, "sleep", lambda *_: None)
+
+        class DeadModel:
+            def generate_content(self, prompt, generation_config=None):
+                raise ResourceExhausted("quota exceeded, limit: 0")
+        c = self._client(DeadModel())
+        with pytest.raises(LLMError) as ei:
+            c.analyze(_events())
+        assert "GEMINI_MODEL" in str(ei.value)  # actionable guidance present
+
+    def test_non_retryable_raises_immediately(self, monkeypatch):
+        slept = {"n": 0}
+        monkeypatch.setattr(llm_client.time, "sleep", lambda *_: slept.__setitem__("n", slept["n"] + 1))
+
+        class BadKeyModel:
+            def generate_content(self, prompt, generation_config=None):
+                raise ValueError("invalid api key")  # not in _RETRYABLE
+        with pytest.raises(LLMError):
+            self._client(BadKeyModel()).analyze(_events())
+        assert slept["n"] == 0  # did not retry/backoff on a non-retryable error
