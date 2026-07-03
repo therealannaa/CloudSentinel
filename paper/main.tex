@@ -244,6 +244,14 @@ Four arms hold model, telemetry, and compute fixed and vary one factor each:
 no LLM (A1/A2 vs A4 isolates the LLM, H1). An independent community Sigma-rules
 baseline (\textbf{SIGMA}) guards against the objection that A4 was designed to lose.
 
+LLMCloudHunter~\cite{schwartz2025llmcloudhunter} generates detection \emph{rules} from
+CTI reports rather than reconstructing kill chains from live telemetry; comparing it on
+CloudKC-Bench would be a task mismatch, so it is positioned in the related-work taxonomy
+(Section~\ref{sec:related}) rather than run as a benchmark arm. GuardDuty requires
+real-AWS access with a $\geq$7-day warm-up period; it is deferred to a real-AWS
+follow-up study (Section~\ref{sec:threats}); SIGMA already provides an independent
+rules comparison that does not depend on a managed service.
+
 \subsection{Environments}
 Scenarios run in two environments emitting the identical schema: a reproducible layer
 (deterministic synthetic generation / LocalStack), and---budget-gated---a real-AWS
@@ -266,6 +274,17 @@ Primary metrics are TPR/recall, FPR, precision, F1, and AUC where meaningful, re
 aggregated to the scenario level. Effect sizes (Cohen's $d_z$) and bootstrap 95\%
 confidence intervals are primary; $p$-values (paired permutation test) are secondary and
 Holm--Bonferroni corrected.
+
+\textbf{TCP disjoint-stream robustness test (DoD item 11).}
+The correlator assigns stage order by sorting candidates on \texttt{event\_time};
+different telemetry sources carry source-specific delivery lags (CloudTrail $\sim$7 min,
+VPC $\sim$75 s, EC2 $\sim$30 s). We sweep a per-source timestamp offset $\Delta T \in
+[-900, +900]$ s and measure the minimum $|\Delta T|$ at which \texttt{order\_penalty}>0
+(\emph{robustness threshold}). This threshold is reported alongside the clock-model skews
+(Section~\ref{sec:background}) to justify the correlation window choice. Crucially,
+recall is invariant to $\Delta T$ (the matching function does not use timestamps), so a
+rising order penalty represents a pure ordering failure rather than a detection failure.
+Run \texttt{python -m benchmark.cli tcp-robustness} to reproduce.
 
 % =====================================================================
 \section{Results}\label{sec:results}
@@ -322,6 +341,11 @@ multi-seed runs, and reported variance. \emph{Statistical:} small per-category $
 power analysis restricts confirmatory claims to two primary tests; other categories are
 descriptive. \emph{Reproducibility:} model drift/deprecation---mitigated by version
 pinning and full artifact release; adversarial LLM evasion is explicitly out of scope.
+\emph{Baseline coverage:} GuardDuty requires real-AWS access with a $\geq$7-day warm-up;
+it is deferred to a follow-up study. LLMCloudHunter generates detection rules from CTI
+reports (a different task) and is therefore positioned in related work rather than scored
+on the benchmark; the community Sigma baseline (SIGMA arm) provides an independent
+rules-only comparison that does not require a managed AWS service.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}

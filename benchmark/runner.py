@@ -28,21 +28,25 @@ def generate(scenario_set="dev", db_path="cloudsentinel.db",
     os.makedirs(manifests_dir, exist_ok=True)
     conn = state_cache.init_state_cache(db_path)
 
-    # choose backend: synthetic (default, offline) or real LocalStack execution
-    ls_clients = None
-    if environment == "localstack":
+    # choose backend: synthetic (default, offline) or real boto3 execution against
+    # LocalStack / real AWS (same code path, different endpoint+creds; see make_clients)
+    aws_env = environment in ("localstack", "real_aws")
+    aws_clients = None
+    if aws_env:
         from benchmark.simulator import localstack_backend as lsb
-        ls_clients = lsb.make_clients()
-        if not lsb.check_connectivity(ls_clients):
+        aws_clients = lsb.make_clients(environment=environment)
+        if not lsb.check_connectivity(aws_clients):
             raise lsb.LocalStackUnavailable(
-                "cannot reach LocalStack at LOCALSTACK_URL — run `docker compose up -d`")
+                f"cannot reach AWS backend for environment={environment!r} "
+                "(localstack: run `docker compose up -d`; real_aws: check credentials/region)")
 
     results = {}
     for sid in _ids_for(scenario_set):
         spec = SCENARIO_SPECS[sid]
-        if environment == "localstack":
+        if aws_env:
             from benchmark.simulator import localstack_backend as lsb
-            events, manifest = lsb.run_scenario_localstack(sid, spec, ls_clients, author=author)
+            events, manifest = lsb.run_scenario_localstack(
+                sid, spec, aws_clients, author=author, environment=environment)
         else:
             events, manifest = build_scenario(sid, spec, author=author)
             for e in events:

@@ -1,53 +1,64 @@
 # External Baselines — Specification
 
-**Owner:** Anna | **Status:** DRAFT spec (built in P3). LLMCloudHunter scope pending supervisor (`07` §10).
+**Owner:** Anna | **Status:** SIGMA built (P3 complete). GuardDuty and LLMCloudHunter **DROPPED** — see §1 and §2.
 
 > **Why this document exists (plain language).** Four-arm ablation (A1–A4) tells you which *internal* part
-> helps. A journal also wants to know how you compare to the *existing field*. v3 requires three external
-> baselines so reviewers can position your work — and so nobody can say "your rules arm (A4) was rigged to
-> lose." Each baseline must be scored by the **same mechanical matching function** (`04`), via a documented
-> adapter if its native output differs.
+> helps. A journal also wants to know how you compare to the *existing field*. The community Sigma baseline
+> (SIGMA arm, already implemented) removes the reviewer objection "your rules arm was rigged to lose" without
+> requiring real-AWS access or a competitor reimplementation.
 
 ---
 
-## 1. GuardDuty (real-AWS, primary external baseline)
+## 1. GuardDuty — DROPPED
 
-- **What:** AWS's managed threat-detection service. Run on the real-AWS sandbox (`10`) with the ≥7-day
-  warm-up. Not available on LocalStack — real-AWS only.
-- **Scope:** run on all scenario categories that the budget supports (prioritise the 15 multi-stage `KC-*`).
-- **Adapter:** map GuardDuty findings (finding type, resource, timestamp) → reconstructed-chain stages
-  (`ttp_id` via GuardDuty-finding-type→ATT&CK mapping, `telemetry_source`, evidence, `timestamp_range`). The
-  mapping table is frozen and published.
-- **Caveats:** GuardDuty is not a kill-chain reconstructor; report it as a detection-coverage comparison with
-  explicit caveats, never as an apples-to-apples chain-reconstruction score.
+**Reason:** GuardDuty requires real-AWS access with a ≥7-day warm-up period. The real-AWS budget has not been
+approved by the supervisor (blocking dependency `07` §9), and there is insufficient time to complete this
+before submission. Additionally, GuardDuty is not a kill-chain reconstructor — any score would require caveated
+interpretation and would not directly address H1 or H2.
 
-## 2. LLMCloudHunter reimplementation (closest competitor)
+**Paper treatment:** One sentence in §7 (Threats to Validity / Limitations): *"GuardDuty comparison is
+deferred to a real-AWS follow-up study; the community Sigma baseline (SIGMA arm) already guards against the
+'rules arm was designed to lose' objection."*
 
-- **What:** reimplement the core correlation approach of Schwartz et al., 2025 (ACM Web Conf;
-  **arXiv:2407.05194**) — LLM generation of Sigma-style detections from CTI — adapted to run over
-  CloudKC-Bench telemetry.
-- **Scope (supervisor decision, `07` §10):** a **faithful partial** reimplementation with **documented
-  deviations** is acceptable and normal in benchmark papers; full reimplementation is a larger P3 cost.
-- **Adapter:** its detections → reconstructed-chain stages, same schema as the arms.
-- **Honesty:** state every deviation from the original in the paper; cite the source precisely.
+~~*Original plan: AWS managed threat-detection service, real-AWS only, `GD` arm code.*~~
 
-## 3. Community Sigma rules correlator (de-risks A4)
+---
 
-- **What:** published **community Sigma rules for AWS CloudTrail** (e.g. the SigmaHQ `cloud/aws` ruleset) used
-  to supplement or replace the team-authored A4 rules.
-- **Why:** removes the reviewer attack "the rules-only arm was designed to lose." If community rules match the
-  LLM, that *strengthens* the H1 finding's credibility.
-- **Adapter:** Sigma match → reconstructed-chain stage (`ttp_id` from the rule's ATT&CK tag).
-- **Provenance:** pin the exact ruleset commit/version; list which rules fired per scenario.
+## 2. LLMCloudHunter reimplementation — DROPPED
 
-## 4. Format-parity requirement (shared)
+**Reason:** LLMCloudHunter (Schwartz et al., 2025; arXiv:2407.05194) generates Sigma-style detection *rules*
+from CTI reports. It does **not** reconstruct kill chains from live telemetry — the task mismatch means any
+benchmark score would compare apples to oranges and invite reviewer criticism. The paper already positions it
+correctly in the related-work taxonomy (§2.1: *"targets rule generation, not reconstruction"*). A faithful
+reimplementation would be a significant P3 cost for a result that is not directly interpretable under the
+matching function (`04`).
 
-All three baselines must emit — directly or through their frozen adapter — the **identical reconstructed-chain
-schema** the arms use, or the matching function (`04`) rejects the run. Adapters are part of the released
-artifact so the comparison is reproducible and not format-confounded.
+**Paper treatment:** Keep the related-work paragraph and the coverage-gap table entry as-is. Add one clause to
+§5.1 (Arms and Baselines): *"LLMCloudHunter generates detection rules from CTI reports (a different task from
+kill-chain reconstruction over live telemetry) and is therefore positioned in related work rather than run as a
+benchmark arm."*
 
-| Baseline | Arm code (`05`) | Environment | LLM cost |
-|----------|-----------------|-------------|----------|
-| GuardDuty | `GD` | real_aws | none |
-| LLMCloudHunter reimpl | `LCH` | localstack + real_aws | yes (tracked) |
-| Community Sigma | `SIGMA` | localstack + real_aws | none |
+~~*Original plan: partial reimplementation adapted to run over CloudKC-Bench telemetry, `LCH` arm code.*~~
+
+---
+
+## 3. Community Sigma rules correlator — IMPLEMENTED ✅
+
+- **What:** community Sigma rules for AWS CloudTrail + S3 (modelled on SigmaHQ `rules/cloud/aws`), arm code
+  `SIGMA`. Implemented in `benchmark/arms/sigma.py`.
+- **Why this is sufficient:** removes the reviewer attack "A4 was designed to lose" — an independent,
+  community-authored ruleset with no VPC/flow-log coverage (just like real SigmaHQ rules) shows where any
+  rules-only approach fails.
+- **Coverage note:** no VPC flow-log rules (stated honestly in the paper — this is the point).
+- **Provenance:** `SIGMA_RULES` catalogue in `benchmark/arms/sigma.py` lists every rule and its ATT&CK tag.
+
+## 4. Format-parity requirement
+
+SIGMA emits the identical reconstructed-chain schema as A1–A4 via `correlate.build_chain`. The matching
+function (`04`) scores it without special-casing.
+
+| Baseline | Arm code | Environment | LLM cost | Status |
+|----------|----------|-------------|----------|--------|
+| GuardDuty | `GD` | real_aws only | none | **DROPPED** (budget-gated) |
+| LLMCloudHunter reimpl | `LCH` | localstack + real_aws | yes | **DROPPED** (task mismatch) |
+| Community Sigma | `SIGMA` | localstack + real_aws | none | **DONE** |

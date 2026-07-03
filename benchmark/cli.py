@@ -170,6 +170,37 @@ def cmd_failures(args):
     return 1 if rep.get("error") else 0
 
 
+def cmd_tcp_robustness(args):
+    from benchmark import tcp_robustness
+    from benchmark.simulator.builder import build_scenario
+
+    category = args.category or "multi_stage_kill_chain"
+    scenario_ids = [sid for sid, spec in SCENARIO_SPECS.items()
+                    if spec["category"] == category and not spec.get("held_out")]
+    manifests = {}
+    for sid in scenario_ids:
+        _, m = build_scenario(sid, SCENARIO_SPECS[sid])
+        manifests[sid] = m.to_dict()
+
+    dt_range = list(range(args.dt_min, args.dt_max + 1, args.dt_step))
+    sources = [s.strip() for s in args.sources.split(",")] if args.sources else None
+    results = tcp_robustness.run_all(manifests, delta_t_range=dt_range, sources=sources)
+
+    print(f"\nTCP disjoint-stream ΔT sensitivity: {len(manifests)} {category} scenarios\n")
+    tcp_robustness.print_report(results)
+
+    thresholds = tcp_robustness.robustness_threshold(results)
+    print(f"\nRobustness thresholds (min |ΔT| where order_penalty > 0):")
+    for (sid, source), thresh in sorted(thresholds.items()):
+        label = f"{thresh} s" if thresh is not None else "robust across sweep"
+        print(f"  {sid} / {source:<12}: {label}")
+
+    if args.csv:
+        tcp_robustness.to_csv(results, args.csv)
+        print(f"\nWrote ΔT sweep -> {args.csv}")
+    return 0
+
+
 def cmd_localstack_check(args):
     from benchmark.simulator import localstack_backend as lsb
     try:
@@ -239,6 +270,20 @@ def build_parser():
                     help="run only the first N scenarios by id (NOTE: BN-* sort first -> use --category instead for a representative slice)")
     ra.add_argument("--csv", default=None)
     ra.set_defaults(func=cmd_run_arms)
+
+    tc = sub.add_parser("tcp-robustness",
+                        help="DoD item 11: ΔT sensitivity of stage-ordering across sources")
+    tc.add_argument("--category", default="multi_stage_kill_chain",
+                    choices=["single_domain", "multi_stage_kill_chain", "low_and_slow",
+                             "ephemeral"],
+                    help="scenario category to sweep (default: multi_stage_kill_chain)")
+    tc.add_argument("--sources", default=None,
+                    help="comma-separated sources to perturb (default: all present)")
+    tc.add_argument("--dt-min", type=int, default=-900, dest="dt_min")
+    tc.add_argument("--dt-max", type=int, default=900, dest="dt_max")
+    tc.add_argument("--dt-step", type=int, default=60, dest="dt_step")
+    tc.add_argument("--csv", default=None)
+    tc.set_defaults(func=cmd_tcp_robustness)
     return p
 
 

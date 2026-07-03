@@ -99,6 +99,44 @@ class TestRealApiBehaviour:
         assert vpc and all(v["synthetic_network"] for v in vpc)
 
 
+class TestInstanceTeardown:
+    """Money-leak regression: every EC2 instance launched by a scenario must be
+    terminated in teardown, or a real-AWS run bills indefinitely."""
+
+    def test_launched_instances_are_terminated(self):
+        clients = fake_clients()
+        # KC-07 launches two instances (T1578 + T1496)
+        lsb.run_scenario_localstack("KC-07", SCENARIO_SPECS["KC-07"], clients)
+        runs = [kw for svc, m, kw in clients["_calls"] if (svc, m) == ("ec2", "run_instances")]
+        terms = [kw for svc, m, kw in clients["_calls"]
+                 if (svc, m) == ("ec2", "terminate_instances")]
+        assert runs, "expected at least one run_instances in KC-07"
+        assert len(terms) == len(runs), "every launched instance must be terminated"
+        assert terms[0]["InstanceIds"] == ["i-fake123"]
+
+    def test_instance_type_override(self, monkeypatch):
+        monkeypatch.setattr(lsb, "_EC2_TYPE_OVERRIDE", "t3.micro")
+        clients = fake_clients()
+        lsb.run_scenario_localstack("SD-04", SCENARIO_SPECS["SD-04"], clients)  # T1578
+        runs = [kw for svc, m, kw in clients["_calls"] if (svc, m) == ("ec2", "run_instances")]
+        assert runs and all(kw["InstanceType"] == "t3.micro" for kw in runs)
+
+
+class TestRealAWSGate:
+    """real_aws must refuse to start without explicit, region-scoped confirmation.
+    The gate is checked BEFORE boto3 import, so it is testable without boto3."""
+
+    def test_real_aws_requires_optin(self, monkeypatch):
+        monkeypatch.delenv("BENCH_ALLOW_REAL_AWS", raising=False)
+        with pytest.raises(lsb.RealAWSGated):
+            lsb.make_clients(environment="real_aws")
+
+    def test_real_aws_region_must_be_approved(self, monkeypatch):
+        monkeypatch.setenv("BENCH_ALLOW_REAL_AWS", "1")
+        with pytest.raises(lsb.RealAWSGated):
+            lsb.make_clients(environment="real_aws", region="us-east-1")
+
+
 class TestConnectivityGuard:
     def test_make_clients_without_boto3_raises(self):
         # this sandbox has no boto3 installed -> make_clients must fail cleanly

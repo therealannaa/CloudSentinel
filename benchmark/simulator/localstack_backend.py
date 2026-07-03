@@ -20,8 +20,10 @@ Honest limitations (documented, not hidden):
 
 The answer-key boundary is preserved: captured raw payloads never carry a MITRE label.
 
-Requires boto3 (imported lazily) and `docker compose up`. Run with
-`--environment localstack`.
+Requires boto3 (imported lazily). LocalStack needs `docker compose up`; run with
+`--environment localstack`. The SAME code runs against real AWS with
+`--environment real_aws` — gated behind BENCH_ALLOW_REAL_AWS=1 + an APPROVED_REGIONS
+check, and every launched resource (incl. EC2 instances) is torn down to avoid spend.
 """
 from __future__ import annotations
 
@@ -34,26 +36,65 @@ from benchmark.simulator.builder import ttp_name
 
 LOCALSTACK_URL = os.getenv("LOCALSTACK_URL", "http://localhost:4566")
 REGION = os.getenv("AWS_DEFAULT_REGION", "ap-south-1")
+APPROVED_REGIONS = [r.strip() for r in
+                    os.getenv("APPROVED_REGIONS", "ap-south-1").split(",") if r.strip()]
+SERVICES = ("s3", "iam", "ec2", "sts", "secretsmanager", "cloudtrail")
+
+# EC2 instance type for the launch techniques (T1578 / T1496). The defaults preserve
+# attack realism on synthetic/LocalStack (free, fake). A real-AWS operator can force a
+# cheap, free-tier-eligible type via BENCH_EC2_INSTANCE_TYPE (e.g. t3.micro) to avoid
+# GPU quotas + spend — teardown terminates instances either way.
+_EC2_TYPE_OVERRIDE = os.getenv("BENCH_EC2_INSTANCE_TYPE")
+
+
+def _instance_type(default):
+    return _EC2_TYPE_OVERRIDE or default
 
 
 class LocalStackUnavailable(RuntimeError):
     pass
 
 
-def make_clients(endpoint=None, region=None):
-    """Lazily build boto3 clients pointed at LocalStack."""
+class RealAWSGated(RuntimeError):
+    """Raised when the real_aws backend is requested without explicit confirmation."""
+
+
+def make_clients(environment="localstack", endpoint=None, region=None):
+    """Lazily build boto3 clients for the requested backend.
+
+    environment="localstack" (default) -> clients point at LocalStack with dummy creds.
+    environment="real_aws" -> clients hit real, BILLABLE AWS using credentials resolved
+    by boto3 itself (env vars / shared profile / instance role). This path is gated
+    behind BENCH_ALLOW_REAL_AWS=1 and an APPROVED_REGIONS check (both verified BEFORE
+    boto3 is even imported) so a real, costing run can never start by accident.
+    """
+    region = region or REGION
+
+    if environment == "real_aws":
+        if os.getenv("BENCH_ALLOW_REAL_AWS") != "1":
+            raise RealAWSGated(
+                "real_aws is BILLABLE: set BENCH_ALLOW_REAL_AWS=1 to confirm you intend "
+                "to run against a real (sandbox) AWS account, with teardown verified")
+        if region not in APPROVED_REGIONS:
+            raise RealAWSGated(
+                f"region {region!r} not in APPROVED_REGIONS {APPROVED_REGIONS} — "
+                "restrict the blast radius before running real_aws")
+
     try:
         import boto3  # noqa
     except ImportError as e:  # pragma: no cover - exercised only without boto3
         raise LocalStackUnavailable(
-            "boto3 is required for the localstack backend (pip install boto3)") from e
+            "boto3 is required for the AWS backends (pip install boto3)") from e
+
+    if environment == "real_aws":
+        # no endpoint_url, no injected creds: boto3 resolves real credentials itself
+        return {svc: boto3.client(svc, region_name=region) for svc in SERVICES}
+
     endpoint = endpoint or LOCALSTACK_URL
-    region = region or REGION
     kw = dict(endpoint_url=endpoint, region_name=region,
               aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
               aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"))
-    return {svc: boto3.client(svc, **kw) for svc in
-            ("s3", "iam", "ec2", "sts", "secretsmanager", "cloudtrail")}
+    return {svc: boto3.client(svc, **kw) for svc in SERVICES}
 
 
 def check_connectivity(clients) -> bool:
@@ -107,7 +148,8 @@ def setup(clients, ctx: Ctx):
 
 
 def teardown(clients, ctx: Ctx):
-    s3, iam, sm = clients["s3"], clients["iam"], clients["secretsmanager"]
+    s3, iam, sm, ec2 = (clients["s3"], clients["iam"],
+                        clients["secretsmanager"], clients["ec2"])
     for kind, name in reversed(ctx.created):
         if kind == "bucket":
             try:
@@ -121,6 +163,9 @@ def teardown(clients, ctx: Ctx):
             _safe(iam.delete_user, UserName=name)
         elif kind == "secret":
             _safe(sm.delete_secret, SecretId=name, ForceDeleteWithoutRecovery=True)
+        elif kind == "instance":
+            # CRITICAL on real AWS: an un-terminated instance bills indefinitely.
+            _safe(ec2.terminate_instances, InstanceIds=[name])
 
 
 # --- per-technique executors --------------------------------------------------
@@ -180,16 +225,22 @@ def _exec(ttp_id, source, clients, ctx):
         return [_cap("GetCallerIdentity", via="instance-metadata", proxy=True,
                      sourceIPAddress="169.254.169.254", arn=(r or {}).get("Arn"))]
     if t == "T1578":
-        r, err = _safe(ec2.run_instances, ImageId="ami-12345678", InstanceType="c5.large",
+        itype = _instance_type("c5.large")
+        r, err = _safe(ec2.run_instances, ImageId="ami-12345678", InstanceType=itype,
                        MinCount=1, MaxCount=1)
         iid = (((r or {}).get("Instances") or [{}])[0]).get("InstanceId")
-        return [_cap("RunInstances", instanceType="c5.large", region="us-west-2",
+        if iid:
+            ctx.created.append(("instance", iid))      # register for teardown
+        return [_cap("RunInstances", instanceType=itype, region="us-west-2",
                      instanceId=iid, error=err)]
     if t == "T1496":
-        r, err = _safe(ec2.run_instances, ImageId="ami-12345678", InstanceType="p3.2xlarge",
+        itype = _instance_type("p3.2xlarge")
+        r, err = _safe(ec2.run_instances, ImageId="ami-12345678", InstanceType=itype,
                        MinCount=1, MaxCount=1)
         iid = (((r or {}).get("Instances") or [{}])[0]).get("InstanceId")
-        return [_cap("RunInstances", instanceType="p3.2xlarge", state="running",
+        if iid:
+            ctx.created.append(("instance", iid))      # register for teardown
+        return [_cap("RunInstances", instanceType=itype, state="running",
                      instanceId=iid, error=err)]
     if t == "T1485":
         out = []
@@ -244,8 +295,15 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def run_scenario_localstack(scenario_id, spec, clients, author="Atishay"):
-    """Execute one scenario against LocalStack and return (events, Manifest)."""
+def run_scenario_localstack(scenario_id, spec, clients, author="Atishay",
+                            environment="localstack"):
+    """Execute one scenario against the AWS API surface and return (events, Manifest).
+
+    `environment` tags the captured events ("localstack" or "real_aws") and is the only
+    difference between the two backends — the executors, capture, and teardown are
+    identical, since both issue the same real boto3 calls (`clients` decides where they
+    land). teardown ALWAYS runs (finally), so a real-AWS run cannot leak resources.
+    """
     ctx = Ctx()
     setup(clients, ctx)
     events, stages = [], []
@@ -255,7 +313,7 @@ def run_scenario_localstack(scenario_id, spec, clients, author="Atishay"):
             stage_events = []
             for j, raw in enumerate(raws):
                 ev = Event.create(scenario_id, idx, j, source, _now().isoformat(),
-                                  raw, is_ground_truth=True, environment="localstack")
+                                  raw, is_ground_truth=True, environment=environment)
                 stage_events.append(ev)
             events.extend(stage_events)
             stages.append(Stage(
@@ -266,7 +324,7 @@ def run_scenario_localstack(scenario_id, spec, clients, author="Atishay"):
             ))
         for j, (source, raw) in enumerate(_benign(clients, ctx)):
             events.append(Event.create(scenario_id, 0, j, source, _now().isoformat(),
-                                        raw, is_ground_truth=False, environment="localstack"))
+                                        raw, is_ground_truth=False, environment=environment))
     finally:
         teardown(clients, ctx)
 
