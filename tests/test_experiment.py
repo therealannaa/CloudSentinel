@@ -40,6 +40,14 @@ class TestRunExperiment:
         assert all(r["token_cost"] == 0 for r in a4)
         assert sum(r["token_cost"] for r in a2) > 0
 
+    def test_category_filter_runs_only_that_category(self, generated):
+        db, manifests = generated
+        results = experiment.run_experiment(
+            arms=("A4",), scenario_set="dev", seeds=1, category="multi_stage_kill_chain",
+            db_path=db, manifests_dir=manifests, auto_generate=False)
+        assert len(results) == 15                                  # 15 KC scenarios
+        assert {r["category"] for r in results} == {"multi_stage_kill_chain"}
+
     def test_deterministic_backend_zero_seed_variance(self, generated):
         db, manifests = generated
         results = experiment.run_experiment(
