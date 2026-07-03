@@ -16,7 +16,7 @@
 | LLM-for-security detection | 6–8 | LLMCloudHunter (arXiv:2407.05194); HuntGPT — Ali & Kostakos 2023 (arXiv:2309.16021); + LLM log-analysis, LLMSAN |
 | Cloud security detection | 5–6 | GuardDuty architecture; AWS-native multi-agent security (Bedrock); CSPM/Stratus (github.com/DataDog/stratus-red-team) |
 | Multi-agent systems for security | 3–4 | Mukherjee & Kantarcioglu 2025 (provenance/agentic hunting); CAMEL-for-security; agentic hunting survey (arXiv:2510.06445) |
-| Security benchmarks & evaluation | 5–6 | CyberSOCEval (arXiv:2509.20166); ExCyTIn-Bench (arXiv:2507.14201); OrgForge-IT (locate); ACSE-Eval (locate); SecBench |
+| Security benchmarks & evaluation | 5–6 | CyberSOCEval (arXiv:2509.20166); ExCyTIn-Bench (arXiv:2507.14201); OrgForge-IT (arXiv:2603.22499); ACSE-Eval (arXiv:2505.11565); SecBench |
 | Kill-chain & ATT&CK modelling | 3–4 | MITRE ATT&CK for Cloud (IaaS); kill-chain formalisms; provenance graphs (DARPA TC/OpTC) |
 | RAG / knowledge retrieval for security | 2–3 | security RAG systems; threat-intel retrieval |
 
@@ -40,5 +40,6 @@ Each subsection ends with a crisp "**leaves open → we address**" paragraph.
 ## Citation hygiene rule
 
 Every reference must trace to a locatable source (arXiv ID, DOI, or official repo/page) — mirror the
-spec's Source-Verification Ledger. Two seed citations still need locating before use: **OrgForge-IT** and
-**ACSE-Eval** (find paper + repo, or drop them from the coverage-gap table).
+spec's Source-Verification Ledger. All coverage-gap competitors are now located: OrgForge-IT
+(arXiv:2603.22499, insider-threat benchmark), ACSE-Eval (arXiv:2505.11565, AWS threat-modeling of IaC).
+See `09_coverage_gap_table.md` for the per-paper property assessment.
