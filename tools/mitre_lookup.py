@@ -35,6 +35,13 @@ CLOUD_TECHNIQUES = {
         "platforms": "AWS,Azure,GCP",
         "data_sources": "CloudTrail,Azure AD Logs,GCP Admin Activity",
     },
+    "T1098.001": {
+        "name": "Account Manipulation: Additional Cloud Credentials",
+        "description": "Adversaries may add adversary-controlled credentials (access keys or login profiles) to a cloud account to maintain persistent access. Creating an access key on another user's account is a common AWS variant.",
+        "mitigation": "Alert on CreateAccessKey / CreateLoginProfile for principals that do not normally rotate keys. Enforce least privilege on iam:CreateAccessKey. Rotate and audit access keys.",
+        "platforms": "AWS,Azure,GCP",
+        "data_sources": "CloudTrail,Azure AD Logs,GCP Admin Activity",
+    },
     "T1110": {
         "name": "Brute Force",
         "description": "Adversaries may use brute force techniques to gain access to accounts when passwords are unknown or when password hashes are obtained.",
@@ -98,6 +105,13 @@ CLOUD_TECHNIQUES = {
         "platforms": "AWS,Azure,GCP",
         "data_sources": "CloudTrail,IAM Access Analyzer",
     },
+    "T1548.005": {
+        "name": "Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access",
+        "description": "Adversaries may abuse permissions that let them assume roles or request temporary elevated access (e.g. sts:AssumeRole) to gain higher privileges than their base principal holds. Role chaining extends this across accounts.",
+        "mitigation": "Restrict which principals may assume sensitive roles. Monitor AssumeRole calls and role-chaining. Apply permission boundaries and session policies.",
+        "platforms": "AWS,Azure,GCP",
+        "data_sources": "CloudTrail,IAM Access Analyzer",
+    },
     "T1552.005": {
         "name": "Unsecured Credentials: Cloud Instance Metadata API",
         "description": "Adversaries may attempt to access the cloud instance metadata API to collect credentials. IMDSv1 on EC2 instances is vulnerable to SSRF-based credential theft.",
@@ -109,6 +123,13 @@ CLOUD_TECHNIQUES = {
         "name": "Impair Defenses: Disable or Modify Tools",
         "description": "Adversaries may disable security tools to avoid detection. In cloud environments this includes stopping CloudTrail logging or deleting trails.",
         "mitigation": "Enable CloudTrail log file validation. Use SCPs to prevent StopLogging/DeleteTrail. Alert immediately on logging changes.",
+        "platforms": "AWS,Azure,GCP",
+        "data_sources": "CloudTrail,CloudWatch Events",
+    },
+    "T1562.008": {
+        "name": "Impair Defenses: Disable Cloud Logs",
+        "description": "Adversaries may disable cloud logging to evade detection, e.g. StopLogging or DeleteTrail on AWS CloudTrail, removing the audit trail of their activity.",
+        "mitigation": "Use SCPs to deny cloudtrail:StopLogging / DeleteTrail. Enable log-file validation and alert immediately on any logging state change. Deliver logs to a separate, locked-down account.",
         "platforms": "AWS,Azure,GCP",
         "data_sources": "CloudTrail,CloudWatch Events",
     },

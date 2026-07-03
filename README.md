@@ -285,6 +285,10 @@ and writes `runs` / `reconstructed_stages` / `scores` to the state cache, plus a
 | A2 | pre-filter + single generalised agent | A1 vs A2 → multi-agent value (H2) |
 | A3 | **no** pre-filter + single agent on raw logs | A2 vs A3 → pre-filter value (C3) |
 | A4 | pre-filter + deterministic rules, **no LLM** | A1/A2 vs A4 → LLM value (H1) |
+| SIGMA | community CloudTrail+S3 Sigma rules, **no LLM** | external baseline (`docs/week1/11`); A4 vs SIGMA shows A4 isn't rigged |
+
+`SIGMA` is opt-in (`--arms A1,A2,A3,A4,SIGMA`). It's an independent community-style ruleset with no VPC/flow-log
+coverage, so it trails A4 on network-ending chains — a realistic, honest baseline, not a strawman.
 
 **LLM backend.** A1–A3 use a pluggable client: the **deterministic** offline backend (default — runs with no
 API key, so the whole ablation is testable) or **Gemini** (auto-selected when `GEMINI_API_KEY` is set). A4 is
