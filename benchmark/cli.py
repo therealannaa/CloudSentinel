@@ -158,6 +158,16 @@ def cmd_analyze(args):
     return 1 if report.get("error") else 0
 
 
+def cmd_failures(args):
+    from benchmark import failure_analysis
+    rep = failure_analysis.analyze(args.db, environment=args.environment)
+    failure_analysis.print_report(rep)
+    if args.csv and not rep.get("error"):
+        failure_analysis.to_csv(rep, args.csv)
+        print(f"\nWrote per-technique miss rates -> {args.csv}")
+    return 1 if rep.get("error") else 0
+
+
 def cmd_localstack_check(args):
     from benchmark.simulator import localstack_backend as lsb
     try:
@@ -206,6 +216,11 @@ def build_parser():
     an.add_argument("--h2-band", type=float, default=0.05, dest="h2_band")
     an.add_argument("--csv", default=None)
     an.set_defaults(func=cmd_analyze)
+
+    fa = sub.add_parser("failures", help="C4 failure-mode analysis (per-technique misses, FPs) from a past run")
+    fa.add_argument("--environment", default=None)
+    fa.add_argument("--csv", default=None)
+    fa.set_defaults(func=cmd_failures)
 
     ra = sub.add_parser("run-arms", help="run the A1-A4 ablation and score it")
     ra.add_argument("--arms", default=",".join(ARMS))

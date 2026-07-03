@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install minimal benchmark dependencies
+        run: pip install -r requirements-bench.txt
+
+      - name: Run the test suite
+        run: pytest -q
+
+      - name: Pipeline self-check (generate -> validate -> score -> seal -> clock)
+        run: python -m benchmark.cli selfcheck
+
+      - name: Smoke the ablation + stats (deterministic backend, no network)
+        run: |
+          python -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 1
+          python -m benchmark.cli analyze
+          python -m benchmark.cli failures
