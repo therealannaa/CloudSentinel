@@ -152,7 +152,8 @@ def cmd_run_arms(args):
 def cmd_analyze(args):
     from benchmark import stats
     report = stats.full_report(db_path=args.db, environment=args.environment,
-                              h1_margin=args.h1_margin, h2_band=args.h2_band)
+                              h1_margin=args.h1_margin, h2_band=args.h2_band,
+                              ttp_match=args.ttp_match)
     stats.print_report(report)
     if args.csv and not report.get("error"):
         stats.to_csv(report["per_category_recall"], args.csv)
@@ -162,7 +163,8 @@ def cmd_analyze(args):
 
 def cmd_failures(args):
     from benchmark import failure_analysis
-    rep = failure_analysis.analyze(args.db, environment=args.environment)
+    rep = failure_analysis.analyze(args.db, environment=args.environment,
+                                   ttp_match=args.ttp_match)
     failure_analysis.print_report(rep)
     if args.csv and not rep.get("error"):
         failure_analysis.to_csv(rep, args.csv)
@@ -247,11 +249,16 @@ def build_parser():
                     help="filter to runs from this environment (synthetic|localstack|real_aws)")
     an.add_argument("--h1-margin", type=float, default=0.15, dest="h1_margin")
     an.add_argument("--h2-band", type=float, default=0.05, dest="h2_band")
+    an.add_argument("--ttp-match", default="stored", choices=["stored", "exact", "parent"],
+                    dest="ttp_match",
+                    help="re-score from stored chains: 'parent' credits parent-vs-sub-technique "
+                         "answers (no LLM re-run); 'stored' uses the as-run exact scores")
     an.add_argument("--csv", default=None)
     an.set_defaults(func=cmd_analyze)
 
     fa = sub.add_parser("failures", help="C4 failure-mode analysis (per-technique misses, FPs) from a past run")
     fa.add_argument("--environment", default=None)
+    fa.add_argument("--ttp-match", default="exact", choices=["exact", "parent"], dest="ttp_match")
     fa.add_argument("--csv", default=None)
     fa.set_defaults(func=cmd_failures)
 

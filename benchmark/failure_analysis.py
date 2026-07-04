@@ -60,7 +60,7 @@ def _prefilter_stress(conn, environment):
     return out
 
 
-def analyze(db_path, environment=None):
+def analyze(db_path, environment=None, ttp_match="exact"):
     conn = state_cache.connect(db_path)
     where = "WHERE r.environment=?" if environment else ""
     args = (environment,) if environment else ()
@@ -84,7 +84,7 @@ def analyze(db_path, environment=None):
             man_cache[sid] = Manifest.load(r["manifest_path"]).to_dict()
         manifest = man_cache[sid]
         recon = _reconstruction(conn, r["run_id"])
-        sc = matching.score({"stages": recon}, manifest)
+        sc = matching.score({"stages": recon}, manifest, ttp_match=ttp_match)
 
         gt_stage_ttp = {st["stage_id"]: st["ttp_id"] for st in manifest["stages"]}
         for ttp in gt_stage_ttp.values():

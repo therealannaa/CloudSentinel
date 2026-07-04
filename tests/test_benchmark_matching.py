@@ -65,6 +65,26 @@ class TestOrderSensitivity:
         assert s.order_aware_recall < s.recall
 
 
+class TestTTPMatchMode:
+    def test_parent_credits_parent_vs_sub(self):
+        # ground truth is a sub-technique; the "system" reported the PARENT technique
+        m = {"stages": [{"stage_id": 1, "ttp_id": "T1078.004", "telemetry_source": "CloudTrail",
+                         "evidence_event_ids": ["e1"], "timestamp_range": ["a", "b"]}]}
+        reported = {"stages": [{"stage_id": 1, "ttp_id": "T1078",  # parent, not .004
+                                "telemetry_source": "CloudTrail",
+                                "evidence_event_ids": ["e1"], "timestamp_range": ["a", "b"]}]}
+        assert score(reported, m, ttp_match="exact").recall == 0.0     # exact: miss
+        assert score(reported, m, ttp_match="parent").recall == 1.0    # parent: credited
+
+    def test_parent_still_rejects_wrong_family(self):
+        m = {"stages": [{"stage_id": 1, "ttp_id": "T1078.004", "telemetry_source": "CloudTrail",
+                         "evidence_event_ids": ["e1"], "timestamp_range": ["a", "b"]}]}
+        reported = {"stages": [{"stage_id": 1, "ttp_id": "T1530",  # unrelated technique
+                                "telemetry_source": "CloudTrail",
+                                "evidence_event_ids": ["e1"], "timestamp_range": ["a", "b"]}]}
+        assert score(reported, m, ttp_match="parent").recall == 0.0    # still a miss
+
+
 class TestBenign:
     def test_benign_no_report_is_perfect(self):
         m = manifest_dict("BN-01")

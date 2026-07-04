@@ -47,8 +47,21 @@ def _stages_of(obj):
     return getattr(obj, "stages", [])
 
 
-def _matches(reported, truth) -> bool:
-    if _stage_get(reported, "ttp_id") != _stage_get(truth, "ttp_id"):
+def _base_ttp(ttp: str) -> str:
+    """Base technique id, dropping any sub-technique suffix (T1078.004 -> T1078)."""
+    return ttp.split(".")[0]
+
+
+def _ttp_equal(a: str, b: str, mode: str) -> bool:
+    """`exact`: full id must match. `parent`: match at the base-technique level, so a
+    reasonable parent-vs-sub answer (T1078 vs T1078.004) is credited (docs/week1/04 §7)."""
+    if mode == "parent":
+        return _base_ttp(a) == _base_ttp(b)
+    return a == b
+
+
+def _matches(reported, truth, ttp_match: str = "exact") -> bool:
+    if not _ttp_equal(_stage_get(reported, "ttp_id"), _stage_get(truth, "ttp_id"), ttp_match):
         return False
     if _stage_get(reported, "telemetry_source") != _stage_get(truth, "telemetry_source"):
         return False
@@ -70,8 +83,9 @@ def _longest_increasing_subseq_len(seq) -> int:
     return len(tails)
 
 
-def score(reconstructed, manifest) -> ScoreResult:
-    """Score one reconstructed chain against one manifest. See module docstring."""
+def score(reconstructed, manifest, ttp_match: str = "exact") -> ScoreResult:
+    """Score one reconstructed chain against one manifest. `ttp_match` is 'exact'
+    (default) or 'parent' (credit a parent-vs-sub-technique answer). See docstring."""
     gt = list(_stages_of(manifest))
     rep = list(_stages_of(reconstructed))
 
@@ -84,7 +98,7 @@ def score(reconstructed, manifest) -> ScoreResult:
         for j, r in enumerate(rep):
             if j in matched_rep_idx:
                 continue
-            if _matches(r, g):
+            if _matches(r, g, ttp_match):
                 matched_rep_idx.add(j)
                 matched_pairs.append((_stage_get(g, "stage_id"), j))
                 matched_gt_ids.append(_stage_get(g, "stage_id"))

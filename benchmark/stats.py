@@ -20,7 +20,7 @@ import random
 import statistics
 from collections import defaultdict
 
-from benchmark import state_cache
+from benchmark import state_cache, matching
 
 PRIMARY_CATEGORY = "multi_stage_kill_chain"
 LLM_ARMS = ("A1", "A2")
@@ -44,6 +44,38 @@ def load_results(db_path, environment=None):
     rows = conn.execute(q, args).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def recompute_results(db_path, environment=None, ttp_match="exact"):
+    """Re-score every run from its stored reconstructed_stages under a given
+    `ttp_match` mode ('exact' or 'parent') WITHOUT re-running any LLM. Lets us test
+    whether exact sub-technique matching was crushing the LLM arms (docs/week1/04 §7)."""
+    import json
+    from benchmark.manifest import Manifest
+    conn = state_cache.connect(db_path)
+    where = "WHERE r.environment=?" if environment else ""
+    args = (environment,) if environment else ()
+    runs = conn.execute(
+        "SELECT r.run_id, r.arm, r.scenario_id, r.seed, s.category, s.manifest_path "
+        f"FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id {where}", args).fetchall()
+    man = {}
+    out = []
+    for r in runs:
+        stages = conn.execute(
+            "SELECT stage_id, ttp_id, telemetry_source, evidence_event_ids "
+            "FROM reconstructed_stages WHERE run_id=? ORDER BY stage_id", (r["run_id"],)).fetchall()
+        recon = {"stages": [{"stage_id": s["stage_id"], "ttp_id": s["ttp_id"],
+                             "telemetry_source": s["telemetry_source"],
+                             "evidence_event_ids": json.loads(s["evidence_event_ids"]),
+                             "timestamp_range": ["", ""]} for s in stages]}
+        p = r["manifest_path"]
+        if p not in man:
+            man[p] = Manifest.load(p).to_dict()
+        sc = matching.score(recon, man[p], ttp_match=ttp_match)
+        out.append({"arm": r["arm"], "scenario_id": r["scenario_id"], "category": r["category"],
+                    "seed": r["seed"], "recall": sc.recall, "precision": sc.precision, "f1": sc.f1})
+    conn.close()
+    return out
 
 
 # --- aggregation -------------------------------------------------------------
@@ -206,9 +238,10 @@ def per_category_table(results, metric="recall", seed=0):
 # --- orchestration -----------------------------------------------------------
 
 def full_report(db_path=None, results=None, environment=None,
-                h1_margin=0.15, h2_band=0.05, seed=0):
+                h1_margin=0.15, h2_band=0.05, seed=0, ttp_match="stored"):
     if results is None:
-        results = load_results(db_path, environment=environment)
+        results = (load_results(db_path, environment=environment) if ttp_match == "stored"
+                   else recompute_results(db_path, environment=environment, ttp_match=ttp_match))
     if not results:
         return {"error": "no scored runs found — run `run-arms` first"}
 
@@ -219,6 +252,7 @@ def full_report(db_path=None, results=None, environment=None,
     return {
         "n_runs": len(results),
         "arms": sorted({r["arm"] for r in results}),
+        "ttp_match": ttp_match,
         "primary_tests": [h1, h2],
         "per_category_recall": per_category_table(results, "recall", seed=seed),
         "per_category_f1": per_category_table(results, "f1", seed=seed),
@@ -232,7 +266,8 @@ def print_report(report):
     if report.get("error"):
         print(report["error"])
         return
-    print(f"\n=== CloudKC-Bench results  ({report['n_runs']} runs, arms {report['arms']}) ===\n")
+    print(f"\n=== CloudKC-Bench results  ({report['n_runs']} runs, arms {report['arms']}, "
+          f"ttp_match={report.get('ttp_match','stored')}) ===\n")
     for h in report["primary_tests"]:
         print(f"[{h['hypothesis']}] {h['test']}")
         print(f"    mean diff = {h['mean_diff']:+.4f}  95% CI {h['ci95']}  "
