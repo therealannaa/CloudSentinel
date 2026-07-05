@@ -1,5 +1,11 @@
 # CloudSentinel Data Schemas
 
+> **Scope note.** This documents the **v1 runtime `Finding` schema** used by the original `collectors/` +
+> `tools/` scaffolding. It is **distinct** from the CloudKC-Bench benchmark schemas — the ground-truth
+> **manifest** (`docs/week1/03` + `manifest.schema.json`) and the **state-cache** tables (`docs/week1/05`,
+> implemented in `benchmark/state_cache.py`). A `Finding` is a *runtime detection claim*; a *manifest* is the
+> *ground-truth answer key*. See `docs/week1/03` §1 for the distinction.
+
 ## Normalized Finding (JSON)
 
 Every collector and agent produces findings in this format.

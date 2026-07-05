@@ -2,6 +2,8 @@
 
 **Owner:** shared | **Status:** 🚧 **NOT STARTED UNTIL BUDGET APPROVED** (v3 §14.2, blocking)
 
+> **Update:** GuardDuty and the LLMCloudHunter reimplementation were **dropped** as baselines (`11`); the sole external baseline is SIGMA. The GuardDuty setup below applies only to an *optional real-AWS follow-up study*, not the current submission.
+
 > **Why this document exists (plain language).** v3 makes **real AWS** the primary environment for external
 > validity — a journal reviewer will not accept LocalStack alone for a security-detection paper. But real AWS
 > costs money and needs supervisor budget sign-off, so we document the setup now and *execute it only after

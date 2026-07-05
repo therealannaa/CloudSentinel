@@ -23,7 +23,11 @@ single-agent LLM, a no-pre-filter agent, and a deterministic rules-only correlat
 | P3 — Arms + baselines | A1–A4 ablation + community-Sigma baseline; pluggable LLM (deterministic / Ollama / Gemini / OpenAI-compat) | ✅ complete + tested |
 | P4 — Analysis | H1/H2 verdicts, bootstrap CIs, effect sizes, Holm-Bonferroni; event-level detection; C4 failure analysis | ✅ complete + tested |
 | — First real run | qwen2.5:7b on synthetic telemetry | ▶️ in progress (see [Findings](#current-findings-preliminary)) |
-| Ahead | capable-model + real-LocalStack runs, external baselines (GuardDuty/LLMCloudHunter), Zeek, held-out eval, write-up | ⏳ |
+| Ahead | capable-model + real-LocalStack runs, Zeek network telemetry, held-out eval, paper write-up | ⏳ |
+
+> External baselines: **SIGMA (community Sigma rules) is the sole external baseline** — GuardDuty and an
+> LLMCloudHunter reimplementation were **dropped** (real-AWS budget not approved / task mismatch), see
+> [`docs/week1/11`](docs/week1/11_external_baselines.md).
 
 ---
 
@@ -59,6 +63,7 @@ benchmark/
   experiment.py     the ablation runner (arms x scenarios x seeds -> scored)
   stats.py          P4: H1/H2, bootstrap CIs, Cohen's dz, permutation p, Holm-Bonferroni, event-level detection
   failure_analysis.py  C4: per-technique misses, FP patterns, pre-filter stress
+  tcp_robustness.py    TCP disjoint-stream ΔT-sensitivity robustness test
   analysis.py       per-category aggregation + C3 cost/latency table
   cli.py            command-line entry points
   simulator/

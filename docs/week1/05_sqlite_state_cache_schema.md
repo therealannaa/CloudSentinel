@@ -4,7 +4,7 @@
 **Status:** DRAFT design for P1 freeze. Tables created in code in P2.
 
 > **v3 (journal) — changed from v2:** added `environment` (`real_aws`/`localstack`) for the dual-environment
-> design; broadened `runs.arm` to include the 3 external baselines (`GD`, `LCH`, `SIGMA`); added cost/latency
+> design; broadened `runs.arm` to include the external baseline (`SIGMA`; GuardDuty/LLMCloudHunter dropped, `11`); added cost/latency
 > columns (`latency_ms`, `prefilter_events_in`, `prefilter_events_out`) feeding the C3 first-class results
 > (`14_cost_latency_plan.md`); added `author`/`reviewer` to `scenarios` (inter-rater check).
 
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS events (
 -- One row per (arm, scenario, seed, environment) execution
 CREATE TABLE IF NOT EXISTS runs (
     run_id              TEXT PRIMARY KEY,           -- uuid
-    arm                 TEXT NOT NULL,              -- A1 | A2 | A3 | A4 | GD | LCH | SIGMA
+    arm                 TEXT NOT NULL,              -- A1 | A2 | A3 | A4 | SIGMA  (GD/LCH dropped, see docs/week1/11)
     environment         TEXT NOT NULL,              -- real_aws | localstack
     scenario_id         TEXT NOT NULL REFERENCES scenarios(scenario_id),
     seed                INTEGER NOT NULL,           -- repeated-measure index (>=3 per LLM arm)
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS runs (
     started_at          TEXT NOT NULL,
     finished_at         TEXT,
     latency_ms          INTEGER,                    -- wall-clock ingest->output (C3 latency)
-    token_cost          INTEGER,                    -- token/API spend (C3 cost; ~0 for A4/GD/SIGMA)
+    token_cost          INTEGER,                    -- token/API spend (C3 cost; ~0 for A4/SIGMA, no LLM)
     prefilter_events_in  INTEGER,                   -- events before pre-filter (C3 filtering ratio)
     prefilter_events_out INTEGER,                   -- events after pre-filter
     UNIQUE (arm, scenario_id, seed, environment)

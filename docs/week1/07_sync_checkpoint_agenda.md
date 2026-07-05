@@ -4,6 +4,8 @@
 **When:** End of P1
 **Status:** DRAFT agenda
 
+> **Update:** GuardDuty and LLMCloudHunter were **dropped** as baselines (`11`), so agenda items 2 and 10 below are superseded — SIGMA is the sole external baseline. The remaining live decisions are venue, real-AWS budget, and journal-scope sign-off.
+>
 > **v3 (journal) — changed from v2:** added the three journal-tier supervisor decisions that block P2 (venue,
 > real-AWS budget, LLMCloudHunter scope — v3 §14), plus journal-scope sign-off. These are the items only the
 > supervisor can resolve; the rest of P1 proceeds on the LocalStack-first path regardless.
@@ -28,9 +30,8 @@
    authored now and **moved to a sealed directory in Week 2**, untouched until P4. Confirm the mechanism
    (separate directory, commit-locked) and who owns sealing.
 
-4. **RESOLVE: multi-stage scenario count (6 vs 8).** The implementation plan says Atishay authors **6**
-   multi-stage scenarios (→ 22 dev total); the study guide §4.2 says **8** (→ 24 dev total). The catalog
-   currently defaults to **8 / 24**. Pick one.
+4. **Multi-stage scenario count — RESOLVED to 15** (journal-tier scaling in `02`; the old workshop 6-vs-8
+   question is moot at ~70 total). Confirm/ratify at the sync.
 
 5. **Co-sign the pre-registration thresholds (`01_pre_registration.md` §3).**
    - H1 margin (default proposed: **≥ 0.15 absolute recall**, multi-stage category).
@@ -59,7 +60,7 @@
     benchmark papers, documented deviations) vs **full** reimplementation — materially changes the P3 timeline.
 
 11. **Journal-scope sign-off.** Confirm the move from workshop (v2) to journal (v3): ~70 scenarios, real-AWS
-    primary, 3 external baselines, power analysis, failure-mode analysis, 25–30-paper review.
+    primary, the SIGMA external baseline, power analysis, failure-mode analysis, 25–30-paper review.
 
 ---
 
@@ -86,5 +87,5 @@
 - [ ] Pre-registration signed + dated (`01`)
 - [ ] Manifest schema merged (`03` + `manifest.schema.json`)
 - [ ] Matching-function spec merged (`04`)
-- [ ] 24 dev + held-out scenarios authored; held-out marked for Week-2 sealing (`02`)
+- [ ] 59 dev + 10 held-out scenarios authored; held-out marked for sealing (`02`)
 - [ ] This sync held; decisions logged above

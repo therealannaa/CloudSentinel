@@ -1,13 +1,12 @@
 # Mechanical Matching Function — Specification
 
 **Owner:** Anna | 🔒 **FREEZE-FIRST** · ⚠️ **Atishay's Week-3 arms depend on this**
-**Status:** DRAFT spec (no implementation). Implemented & unit-tested in P2.
+**Status:** ✅ **IMPLEMENTED** — `benchmark/matching.py`, unit-tested (`tests/test_benchmark_matching.py`).
 
-> **v3 (journal) — changed from v2:** the **3 external baselines** (GuardDuty `GD`, LLMCloudHunter `LCH`,
-> community Sigma `SIGMA` — see `11_external_baselines.md`) must emit the **same reconstructed-chain schema**
-> as A1–A4, or be wrapped by a **documented, frozen adapter** that maps their native output onto stages
-> (`stage_id`, `ttp_id`, `telemetry_source`, evidence). The adapter mapping is published with the benchmark so
-> the comparison is not confounded by output format.
+> **Implementation status (update):** this spec is built. The open decisions in §7 are now **resolved** (see
+> that section). The sole external baseline is **SIGMA** (community Sigma rules); GuardDuty and LLMCloudHunter
+> were **dropped** (`11_external_baselines.md`). SIGMA emits the same reconstructed-chain schema as A1–A4, so
+> no adapter is needed.
 
 > **Why this document exists (plain language).** This is the algorithm that grades the system. It takes what
 > an arm *claims* the kill chain was (its reconstructed chain) and the *true* manifest (`03`), and produces an
@@ -111,8 +110,15 @@ def score(reconstructed, manifest):
                 f1=f1, order_penalty=order_penalty)
 ```
 
-## 7. Open decisions for the sync (`07`)
+## 7. Decisions — RESOLVED in implementation
 
-- Exact-TTP-only vs parent-technique credit (§2.1).
-- Exact `order_penalty` form (§3).
-- Whether evidence binding requires ≥1 overlap (default) or a stricter Jaccard threshold.
+These were open at freeze; resolved during P3/P4 (report all variants; supervisor confirms the *primary*):
+
+- **Exact vs parent TTP credit (§2.1): BOTH implemented** as `matching.score(..., ttp_match="exact"|"parent")`
+  (`analyze --ttp-match exact|parent`). `parent` credits a parent-vs-sub-technique answer (a fairer metric for
+  the LLM, which the exact metric penalises because A4 hardcodes the exact sub-technique). Report both.
+- **Event-level detection metric ADDED** (`benchmark.cli detection`): technique-agnostic — did the arm cite the
+  ground-truth *attack events* at all, regardless of the technique label? Decouples correlation from technique
+  naming. This is a scoring lens, not part of the frozen exact-match spec.
+- **`order_penalty` form:** implemented as reported in §3 (order-agnostic recall + order-aware score via LIS).
+- **Evidence binding:** ≥1 overlap (the frozen default); no stricter Jaccard threshold adopted.
