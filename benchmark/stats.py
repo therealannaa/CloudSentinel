@@ -293,6 +293,22 @@ def full_report(db_path=None, results=None, environment=None,
     if not results:
         return {"error": "no scored runs found — run `run-arms` first"}
 
+    warnings = []
+    if db_path:
+        conn = state_cache.connect(db_path)
+        where = "WHERE r.environment=?" if environment else ""
+        args = (environment,) if environment else ()
+        rows = conn.execute(
+            "SELECT s.category, COUNT(DISTINCT r.model_version) AS nmodels, "
+            "GROUP_CONCAT(DISTINCT r.model_version) AS models "
+            f"FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id {where} "
+            "GROUP BY s.category", args).fetchall()
+        conn.close()
+        for row in rows:
+            if row["nmodels"] and row["nmodels"] > 1:
+                warnings.append(f"category '{row['category']}' mixes models "
+                                f"[{row['models']}] — re-run cleanly (use a fresh --db).")
+
     h1 = evaluate_h1(results, margin=h1_margin, seed=seed)
     h2 = evaluate_h2(results, band=h2_band, seed=seed)
     holm = holm_bonferroni([h1["p_perm"], h2["p_perm"]])
@@ -301,6 +317,7 @@ def full_report(db_path=None, results=None, environment=None,
         "n_runs": len(results),
         "arms": sorted({r["arm"] for r in results}),
         "ttp_match": ttp_match,
+        "warnings": warnings,
         "primary_tests": [h1, h2],
         "per_category_recall": per_category_table(results, "recall", seed=seed),
         "per_category_f1": per_category_table(results, "f1", seed=seed),
@@ -316,6 +333,10 @@ def print_report(report):
         return
     print(f"\n=== CloudKC-Bench results  ({report['n_runs']} runs, arms {report['arms']}, "
           f"ttp_match={report.get('ttp_match','stored')}) ===\n")
+    for w in report.get("warnings", []):
+        print(f"  !! WARNING: {w}")
+    if report.get("warnings"):
+        print()
     for h in report["primary_tests"]:
         print(f"[{h['hypothesis']}] {h['test']}")
         print(f"    mean diff = {h['mean_diff']:+.4f}  95% CI {h['ci95']}  "

@@ -66,9 +66,14 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
         conn = state_cache.connect(db_path)
 
     client = get_client()
-    model_version = model_version or (
-        os.getenv("GEMINI_MODEL", "gemini-2.0-flash") if client.name == "gemini"
-        else "deterministic-v1")
+    if model_version is None:
+        if client.name == "gemini":
+            model_version = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        elif client.name in ("ollama", "openai-compat"):
+            model_version = getattr(client, "model", client.name)   # e.g. qwen2.5:7b
+        else:
+            model_version = "deterministic-v1"
+    print(f"  LLM backend: {client.name}  (model_version tag: {model_version})")
     arm_objs = {code: get_arm(code, client=client) for code in arms}
 
     clauses, params = [], {}
