@@ -50,9 +50,12 @@ four-arm ablation (multi-agent LLM, single-agent LLM, single agent without a
 pre-filter, and a deterministic rules-only correlator) plus an independent community
 Sigma-rules baseline, holding model, telemetry, and compute fixed across arms.
 We report standard detection metrics per scenario category with bootstrap confidence
-intervals and effect sizes, and resolve two pre-registered hypotheses.
-\result{one-sentence headline: does the LLM cross-domain layer beat rules (H1), and
-does multi-agent decomposition beat a single agent (H2)?}
+intervals and effect sizes, and resolve two pre-registered hypotheses. In a preliminary
+run (qwen2.5:7b, multi-stage category), the LLM performs cross-domain attack-\emph{event}
+detection competitively and at higher precision than the rules ($\geq 0.94$ vs $0.73$),
+but is markedly worse at exact ATT\&CK-\emph{technique} attribution; multi-agent
+decomposition adds no measurable value over a single agent.
+\todo{finalise abstract numbers after the full-category + real-telemetry runs.}
 We further quantify the cost/latency of the deterministic pre-filter and give a
 failure-mode taxonomy showing when and why reconstruction fails. All artifacts---the
 generator, manifests, schema, matching function, and analysis scripts---are released
@@ -288,46 +291,93 @@ Run \texttt{python -m benchmark.cli tcp-robustness} to reproduce.
 
 % =====================================================================
 \section{Results}\label{sec:results}
-% Owner: Atishay. Fill from `benchmark.cli analyze` (per-category CIs) + the run CSVs.
-\subsection{Primary hypotheses}
-\result{H1 verdict (SUPPORTED / NOT SUPPORTED): best\{A1,A2\} vs A4 multi-stage recall,
-mean difference, 95\% CI, $d_z$, Holm-corrected decision.}
-\result{H2 verdict (FAIL TO REJECT / REJECT): A1 vs A2 multi-stage F1, mean difference,
-95\% CI, $d_z$.}
+% Owner: Atishay.
+\noindent\textbf{Preliminary run.} The numbers below are a first, internally-valid result on the
+\emph{multi-stage} category (15 scenarios, 3 seeds) with \textbf{qwen2.5:7b} (served locally via Ollama) as the
+LLM and the \emph{synthetic} telemetry backend. Full-category and real-telemetry (LocalStack) runs are in
+progress; the framing and pipeline are fixed, only the numbers will grow. \todo{extend to all categories +
+real telemetry; add a second, larger model.}
+
+\subsection{Two scoring lenses}
+We report reconstruction under two lenses (Section~\ref{sec:bench}): \emph{technique-level} (a stage is
+correct only if the ATT\&CK technique, telemetry source, and cited evidence all match) and \emph{event-level}
+(technique-agnostic: did the arm cite the ground-truth attack \emph{events} at all?). Table~\ref{tab:twolens}
+shows they tell very different stories.
 
 \begin{table}[t]
-\caption{Per-category recall (mean [95\% CI]) by arm. Exploratory; not pooled.}
-\label{tab:percat}
+\caption{Multi-stage kill chains: two scoring lenses (qwen2.5:7b, synthetic, $n{=}15$, 3 seeds).
+Technique-level uses parent-technique credit; event-level is technique-agnostic.}
+\label{tab:twolens}
 \centering
-\begin{tabular}{llc}
+\begin{tabular}{lcccc}
 \toprule
-Arm & Category & Recall [95\% CI] \\
+ & A1 & A2 & A3 & \textbf{A4 (rules)} \\
 \midrule
-A1--A4, SIGMA & single-domain / multi-stage / low-and-slow / & \result{table} \\
-              & ephemeral / benign & \result{from analyze} \\
+Technique-level recall      & 0.037 & 0.011 & 0.041 & \textbf{0.911} \\
+Event-level recall          & 0.674 & 0.641 & 0.732 & 0.967 \\
+Event-level precision       & 0.942 & 0.963 & \textbf{1.000} & 0.727 \\
+Tokens / scenario           & 1540  & 1110  & 1291  & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\noindent The LLM arms \textbf{detect attack events precisely} --- event-level recall $0.64$--$0.73$ at
+precision $0.94$--$1.00$, \emph{higher precision than the rules} ($0.73$) --- yet score near-zero at the
+technique level. The rules (A4) win technique-level recall ($0.911$) because they encode the exact
+sub-technique each scenario uses; the LLM, even given the closed technique vocabulary and parent-technique
+credit, rarely names the exact technique. The bottleneck is \textbf{technique attribution, not cross-domain
+event detection}.
+
+\subsection{Primary hypotheses}
+\textbf{H1 (LLM vs rules, technique-level recall):} the best LLM arm (A1) trails A4 by a mean of $-0.874$
+(95\% CI $[-0.959,-0.767]$, Cohen's $d_z=-4.39$, permutation $p<0.001$, Holm-corrected). H1 is
+\textbf{not supported} --- and, on the strict technique-level metric, the LLM is significantly \emph{worse}.
+\textbf{H2 (multi-agent vs single, F1):} A1 vs A2 differ by $+0.027$ (95\% CI $[-0.004,0.062]$, $d_z=0.42$,
+$p=0.19$): we \textbf{fail to reject} H2 --- multi-agent decomposition adds no measurable value, while costing
+$\sim$40\% more tokens (1540 vs 1110).
+
 \subsection{Pre-filter cost and latency (C3)}
-\result{filtering ratio per category; token cost per scenario per arm (A2 vs A3);
-latency mean/p95 per arm; cost--accuracy trade-off figure.}
+The deterministic pre-filter keeps $\sim$82\% of events on multi-stage (filtering ratio $0.82$; A3 runs
+unfiltered at $1.0$). It reduces LLM token cost (A2 $1110$ vs A3 $1291$, $\approx$14\%) --- but at an
+event-recall cost: \emph{A3 (no pre-filter) detects more attack events than A2} ($0.732$ vs $0.641$). Thus the
+pre-filter is a genuine cost-vs-recall trade-off, and for a capable reader model it discards real detections.
+A4 (rules) and SIGMA incur zero LLM cost. \todo{cost--accuracy frontier figure once all categories are run.}
 
 % =====================================================================
 \section{Failure-Mode Analysis}\label{sec:failure}
-% Owner: Atishay. Fill from `benchmark.cli failures`.
-\result{per-technique miss rates (which TTPs are consistently missed and why);
-false-positive characterisation (systematic vs random; benign-activity triggers);
-LLM-specific failures (hallucinated attributions, context-window misses, over-correlation);
-pre-filter recall stress on low-and-slow (ground-truth evidence dropped before the LLM).}
-If H1 is supported, this section tells practitioners when \emph{not} to trust the LLM;
-if H1 fails, explaining \emph{why} becomes the main analytical contribution.
+% Owner: Atishay.
+\textbf{Technique attribution is the dominant LLM failure.} Because event-level precision is $\geq 0.94$ while
+technique-level recall is $\sim$0.04, almost every event the LLM flags \emph{is} an attack event, but the
+attached ATT\&CK id is usually wrong. Before the technique vocabulary was supplied, the model labelled events
+with techniques outside the benchmark entirely (e.g., T1569, T1222); constraining the label space fixed the
+out-of-vocabulary errors but not the within-vocabulary confusions.
+
+\textbf{Rules (A4) failure.} A4 misses \emph{Cloud Infrastructure Discovery} (T1580) entirely on multi-stage
+(its signature cannot distinguish T1580 from the sibling T1526), and over-flags on benign scenarios
+(false-positive precision $0.73$) because every \texttt{ListBuckets}/\texttt{GetObject} trips a signature.
+
+\textbf{Pre-filter recall stress.} On multi-stage the pre-filter retains $0.967$ of ground-truth events; the
+recall cost concentrates in the low-and-slow category, where sparse, subtle events are most likely to be
+dropped before any arm sees them. \todo{report low-and-slow pre-filter recall from the full run.}
 
 % =====================================================================
 \section{Discussion}\label{sec:discussion}
 % Owner: Anna
-\result{interpretation of H1/H2 for practitioners; when cross-domain LLM correlation is
-worth its cost; what the pre-filter buys; deployment guidance from the failure modes.}
+Our headline is a \emph{decomposition}: on AWS multi-stage kill chains, a mid-sized open LLM performs
+cross-domain attack-event detection competitively and at higher precision than deterministic rules, but fails
+at exact ATT\&CK-technique attribution. For a SOC, this suggests LLMs are promising as \emph{high-precision
+triage / correlation} aids --- surfacing the events that matter with few false alarms --- while exact technique
+labelling is better left to rules or human analysts. Multi-agent decomposition did not pay for its extra cost
+(H2), and the pre-filter trades a modest cost saving for lost detections, so a cost-sensitive deployment might
+skip it when the model can ingest the full stream.
+
+\textbf{Why the rules win technique-level, and why that is not the whole story.} On this \emph{synthetic}
+benchmark the rules are near-optimal \emph{by construction}: their signatures are effectively the inverse of
+the scenario generator, so A4's $0.91$/$0.97$ scores are an upper bound a real deployment would not reach. The
+strict technique-level metric therefore structurally favours rules that encode the answer key; we accordingly
+report event-level detection as the headline and technique-level as a stricter secondary, and defer the
+primary-metric decision to the pre-registration sign-off. A real-telemetry run, where no rule is a perfect
+inverse, is the decisive next test. \todo{supervisor: ratify primary metric (event- vs technique-level).}
 
 % =====================================================================
 \section{Threats to Validity}\label{sec:threats}

@@ -1,0 +1,5 @@
+arm,category,n_scenarios,recall,precision,f1,token_cost,latency_ms,prefilter_in,prefilter_out,prefilter_recall,filtering_ratio
+A1,multi_stage_kill_chain,15,0.0204,0.0241,0.0218,1539.9111,10246.9778,11.2,9.1333,0.9667,0.8155
+A2,multi_stage_kill_chain,15,0.0056,0.0056,0.0056,1110.0,5493.7333,11.2,9.1333,0.9667,0.8155
+A3,multi_stage_kill_chain,15,0.0185,0.0204,0.0193,1291.1333,6029.8445,11.2,11.2,0.9667,1.0
+A4,multi_stage_kill_chain,15,0.9111,0.6022,0.7237,0,0,11.2,9.1333,0.9667,0.8155
