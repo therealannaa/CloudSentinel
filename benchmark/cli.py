@@ -161,6 +161,25 @@ def cmd_analyze(args):
     return 1 if report.get("error") else 0
 
 
+def cmd_detection(args):
+    from benchmark import stats
+    rows = stats.event_detection(args.db, environment=args.environment)
+    if not rows:
+        print("no runs found — run `run-arms` first")
+        return 1
+    print("\n=== Event-level detection (technique-agnostic: did the arm find the "
+          "attack EVENTS, regardless of technique label?) ===\n")
+    print(f"{'arm':<6}{'category':<26}{'event_recall':>14}{'event_precision':>17}{'n':>5}")
+    for r in rows:
+        er = "-" if r["event_recall"] is None else f"{r['event_recall']:.3f}"
+        ep = "-" if r["event_precision"] is None else f"{r['event_precision']:.3f}"
+        print(f"{r['arm']:<6}{r['category']:<26}{er:>14}{ep:>17}{r['n_scenarios']:>5}")
+    if args.csv:
+        stats.to_csv(rows, args.csv)
+        print(f"\nWrote -> {args.csv}")
+    return 0
+
+
 def cmd_failures(args):
     from benchmark import failure_analysis
     rep = failure_analysis.analyze(args.db, environment=args.environment,
@@ -255,6 +274,11 @@ def build_parser():
                          "answers (no LLM re-run); 'stored' uses the as-run exact scores")
     an.add_argument("--csv", default=None)
     an.set_defaults(func=cmd_analyze)
+
+    de = sub.add_parser("detection", help="technique-agnostic event-level detection (did the arm find the attack events?)")
+    de.add_argument("--environment", default=None)
+    de.add_argument("--csv", default=None)
+    de.set_defaults(func=cmd_detection)
 
     fa = sub.add_parser("failures", help="C4 failure-mode analysis (per-technique misses, FPs) from a past run")
     fa.add_argument("--environment", default=None)

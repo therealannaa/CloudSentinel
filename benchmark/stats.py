@@ -221,6 +221,54 @@ def evaluate_h2(results, band=0.05, category=PRIMARY_CATEGORY, seed=0):
 
 # --- per-category exploratory table (with CIs) -------------------------------
 
+def event_detection(db_path, environment=None):
+    """Technique-agnostic event-level detection: did the arm's reconstructed chain
+    cite the ground-truth ATTACK events, regardless of the technique label it gave
+    them? Decouples 'found the attack events' (the correlation skill) from 'named the
+    exact ATT&CK technique'. Aggregated per (arm, category), seeds->scenario first."""
+    import json
+    from collections import defaultdict
+    conn = state_cache.connect(db_path)
+    where = "WHERE r.environment=?" if environment else ""
+    args = (environment,) if environment else ()
+    runs = conn.execute(
+        "SELECT r.run_id, r.arm, r.scenario_id, s.category "
+        f"FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id {where}", args).fetchall()
+    gt_cache = {}
+    by_scen = defaultdict(lambda: defaultdict(list))   # (arm,cat) -> scenario -> [rec], [prec]
+    for r in runs:
+        sid = r["scenario_id"]
+        if sid not in gt_cache:
+            gt_cache[sid] = {row["event_id"] for row in conn.execute(
+                "SELECT event_id FROM events WHERE scenario_id=? AND is_ground_truth=1", (sid,))}
+        gt = gt_cache[sid]
+        recon = set()
+        for row in conn.execute(
+                "SELECT evidence_event_ids FROM reconstructed_stages WHERE run_id=?", (r["run_id"],)):
+            recon |= set(json.loads(row["evidence_event_ids"]))
+        hit = len(recon & gt)
+        rec = (hit / len(gt)) if gt else None                  # benign: no attack events
+        prec = (hit / len(recon)) if recon else (None if not gt else 0.0)
+        key = (r["arm"], r["category"])
+        by_scen[key][sid].append((rec, prec))
+    conn.close()
+
+    rows = []
+    for (arm, cat), scen in sorted(by_scen.items()):
+        recs, precs = [], []
+        for sid, vals in scen.items():
+            rr = [v[0] for v in vals if v[0] is not None]
+            pp = [v[1] for v in vals if v[1] is not None]
+            if rr:
+                recs.append(sum(rr) / len(rr))
+            if pp:
+                precs.append(sum(pp) / len(pp))
+        rows.append({"arm": arm, "category": cat, "n_scenarios": len(scen),
+                     "event_recall": round(sum(recs) / len(recs), 4) if recs else None,
+                     "event_precision": round(sum(precs) / len(precs), 4) if precs else None})
+    return rows
+
+
 def per_category_table(results, metric="recall", seed=0):
     means = scenario_means(results, metric)
     cat = _category_of(results)

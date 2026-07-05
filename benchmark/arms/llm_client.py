@@ -32,12 +32,24 @@ class LLMError(RuntimeError):
 _RETRYABLE = {"ResourceExhausted", "ServiceUnavailable", "TooManyRequests",
               "InternalServerError", "DeadlineExceeded"}
 
+# The closed technique vocabulary in scope for this benchmark. Giving the model the
+# label space (not the answer) makes the task well-posed: without it the model guesses
+# from the whole ~200-technique ATT&CK catalogue and rarely lands the exact one, which
+# unfairly tanks recall (observed with qwen2.5:7b labelling events T1569/T1222, not in
+# the benchmark). This is standard for a classification benchmark — you state the labels.
+def _technique_menu():
+    from tools.mitre_lookup import CLOUD_TECHNIQUES
+    extra = {"T1098.001", "T1548.005", "T1562.008"}
+    return ", ".join(sorted(set(CLOUD_TECHNIQUES) | extra))
+
+
 # The shared analyst prompt used by every real backend.
 _ANALYST_PROMPT = (
     "You are a {role} cloud security analyst. Below are AWS telemetry events as JSON. "
     "Identify which events are part of an attack and map each to a single MITRE "
-    "ATT&CK-for-Cloud technique id (e.g. T1098.001). Reply ONLY with a JSON list of "
-    "objects: [{{\"event_id\": str, \"ttp_id\": str}}]. Events:\n{events}"
+    "ATT&CK-for-Cloud technique id. Use ONLY these technique ids: {menu}. "
+    "Reply ONLY with a JSON list of objects: [{{\"event_id\": str, \"ttp_id\": str}}]. "
+    "Events:\n{events}"
 )
 
 
@@ -150,7 +162,7 @@ class OpenAICompatibleClient:
             f"  - Try a smaller/faster model or fewer scenarios (--limit).")
 
     def analyze(self, events, role="generalist", seed=0):
-        prompt = _ANALYST_PROMPT.format(role=role, events=json.dumps(_payload(events))[:200_000])
+        prompt = _ANALYST_PROMPT.format(role=role, menu=_technique_menu(), events=json.dumps(_payload(events))[:200_000])
         body = {"model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.7, "seed": seed, "stream": False}
@@ -193,7 +205,7 @@ class GeminiClient:
             "  - Validate cheaply first:  run-arms --arms A2 --limit 1 --seeds 1") from last
 
     def analyze(self, events, role="generalist", seed=0):
-        prompt = _ANALYST_PROMPT.format(role=role, events=json.dumps(_payload(events))[:200_000])
+        prompt = _ANALYST_PROMPT.format(role=role, menu=_technique_menu(), events=json.dumps(_payload(events))[:200_000])
         resp = self._generate(prompt)
         cands = _parse_candidates(getattr(resp, "text", ""), events)
         usage = getattr(resp, "usage_metadata", None)
