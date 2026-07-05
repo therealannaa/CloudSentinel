@@ -1,0 +1,367 @@
+%% CloudKC-Bench — IEEE journal draft (IEEEtran).
+%% Target: IEEE TIFS / Computers & Security. Compiles on Overleaf as-is.
+%% Ownership (per plan v3 §11): Atishay = Abstract, System, Results, Failure Analysis,
+%% Limitations. Anna = Introduction, Related Work, Discussion, Conclusion.
+%% [RESULT] = fill from `benchmark.cli analyze/failures` once the run completes.
+\documentclass[journal]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+% Placeholders — make unfilled results impossible to miss.
+\newcommand{\result}[1]{\textcolor{red}{\textbf{[RESULT: #1]}}}
+\newcommand{\todo}[1]{\textcolor{blue}{[TODO: #1]}}
+\newcommand{\cmark}{\ensuremath{\checkmark}}
+\newcommand{\xmark}{\ensuremath{\times}}
+
+\begin{document}
+
+\title{CloudKC-Bench: An Open Benchmark and Controlled Study of LLM
+Cross-Domain Correlation for AWS Multi-Stage Kill-Chain Reconstruction}
+
+\author{Atishay~Jain,~Anna~M.,~and~S.~Nagasundari%
+\thanks{The authors are with the Centre for Information Security, Forensics and
+Cyber Resilience (ISFCR), PES University, Bengaluru, India.}%
+\thanks{Corresponding author: Atishay Jain (e-mail: atishay.offical@gmail.com).}}
+
+\markboth{Preprint --- draft \today}{Jain \MakeLowercase{\textit{et al.}}: CloudKC-Bench}
+
+\maketitle
+
+\begin{abstract}
+Multi-stage attacks on cloud infrastructure leave traces scattered across
+heterogeneous control-plane and network telemetry---IAM/CloudTrail API events, VPC
+Flow Logs, S3 access logs, and EC2 lifecycle events---such that no single source
+contains a whole attack. Whether Large Language Models (LLMs) can correlate across
+these sources to reconstruct the kill chain, and whether they do so better than
+simpler baselines, is an open and largely unmeasured question. We present
+\emph{CloudKC-Bench}, the first open benchmark targeting AWS control-plane
+multi-stage kill-chain reconstruction: a taxonomy-structured set of
+$\sim$70 scenarios grounded in documented real incidents and ATT\&CK-for-Cloud
+techniques, each released with a machine-checkable ground-truth manifest and a
+published mechanical matching function. Using the benchmark we run a pre-registered
+four-arm ablation (multi-agent LLM, single-agent LLM, single agent without a
+pre-filter, and a deterministic rules-only correlator) plus an independent community
+Sigma-rules baseline, holding model, telemetry, and compute fixed across arms.
+We report standard detection metrics per scenario category with bootstrap confidence
+intervals and effect sizes, and resolve two pre-registered hypotheses.
+\result{one-sentence headline: does the LLM cross-domain layer beat rules (H1), and
+does multi-agent decomposition beat a single agent (H2)?}
+We further quantify the cost/latency of the deterministic pre-filter and give a
+failure-mode taxonomy showing when and why reconstruction fails. All artifacts---the
+generator, manifests, schema, matching function, and analysis scripts---are released
+to enable independent replication.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Cloud security, threat detection, large language models, benchmark, MITRE ATT\&CK,
+kill-chain reconstruction, AWS, multi-agent systems.
+\end{IEEEkeywords}
+
+% =====================================================================
+\section{Introduction}\label{sec:intro}
+% Owner: Anna
+Cloud control-plane telemetry is siloed by design: a single attack stage such as
+privilege escalation surfaces in CloudTrail, while the ensuing exfiltration surfaces
+in S3 access logs \emph{and} VPC Flow Logs. Reconstructing a multi-stage kill chain
+therefore requires correlation \emph{across} telemetry sources that share no join key
+and arrive with different, variable delivery latencies. LLMs have been proposed for
+security triage, but claims about their value are frequently made without fair
+baselines, without reproducible data, and without honest treatment of
+non-determinism---exactly the flaws that sink security-ML papers.
+
+\textbf{Problem.} Given heterogeneous AWS control-plane and network telemetry produced
+during a multi-stage attack, reconstruct the kill chain---identify which events belong
+to the attack, in what order, mapped to which ATT\&CK-for-Cloud techniques---and do so
+measurably better, or measurably no better, than fair baselines.
+
+\textbf{Gap.} There is no public AWS control-plane multi-stage kill-chain dataset with
+machine-checkable ground-truth manifests (Section~\ref{sec:related}). Existing cloud
+security benchmarks target a different platform (Azure), a different task (malware
+analysis, threat-intel reasoning, architectural threat modeling, insider threat), or
+produce detection rules rather than reconstructed chains.
+
+\textbf{Contributions.}
+\begin{itemize}
+\item \textbf{C1.} \emph{CloudKC-Bench}, the first open benchmark targeting AWS
+control-plane multi-stage kill chains, with ground-truth manifests and a published
+mechanical matching function (Section~\ref{sec:bench}).
+\item \textbf{C2.} A pre-registered four-arm ablation on identical telemetry that
+attributes any detection advantage to a specific layer---pre-filter, LLM, or
+multi-agent decomposition (Sections~\ref{sec:setup},~\ref{sec:results}).
+\item \textbf{C3.} A first-class cost/latency analysis of deterministic pre-filtering,
+with measured per-category filtering ratios and a cost--accuracy trade-off.
+\item \textbf{C4.} A failure-mode taxonomy: which categories, techniques, and
+false-positive patterns break reconstruction (Section~\ref{sec:failure}).
+\item \textbf{C5.} A reproducibility artifact: pinned model, frozen scenarios, released
+code, manifests, and analysis scripts.
+\end{itemize}
+We deliberately state H2 as a null and report negative results honestly; the benchmark
+stands as a contribution regardless of whether the system ``wins''.
+
+% =====================================================================
+\section{Background}\label{sec:background}
+% Owner: Atishay
+\subsection{AWS control-plane telemetry}
+CloudSentinel/CloudKC-Bench considers four sources. \emph{CloudTrail} records every
+API call (\texttt{eventName}, \texttt{userIdentity}, \texttt{sourceIPAddress},
+\texttt{eventTime}, request/response elements); its S3 delivery latency is typically
+5--15 minutes. \emph{VPC Flow Logs} record accepted/rejected IP traffic at the ENI
+level (\texttt{srcaddr}, \texttt{dstaddr}, ports, protocol, action, bytes).
+\emph{S3 access logs / data events} record object operations (\texttt{GetObject},
+\texttt{PutObject}, \texttt{DeleteObject}, \texttt{CopyObject}). \emph{EC2 lifecycle}
+events record launches, terminations, and image/snapshot operations.
+
+\subsection{Kill chains and ATT\&CK for Cloud}
+A multi-stage cloud attack follows a recognisable progression (initial access,
+persistence, privilege escalation, defense evasion, credential access, discovery,
+lateral movement, exfiltration, impact), each stage typically visible in a different
+telemetry source. We ground every scenario stage in an ATT\&CK-for-Cloud technique
+identifier so that realism is externally citable rather than asserted.
+
+\subsection{LLMs for security triage}
+Prior work applies LLMs to explanation, rule generation, and QA over security logs.
+Our position is that the multi-agent architecture is an \emph{instrument}, not a
+contribution: its value is tested by ablation, and a null result is a valid finding.
+
+% =====================================================================
+\section{Related Work}\label{sec:related}
+% Owner: Anna. Coverage-gap assessment from docs/week1/09 (papers read, Jul 2026).
+We organise prior work as a taxonomy and, for each theme, state what it leaves open.
+
+\subsection{LLM-assisted security detection}
+LLMCloudHunter~\cite{schwartz2025llmcloudhunter} generates Sigma detection-rule
+candidates from cyber-threat-intelligence reports for cloud, and HuntGPT~\cite{ali2023huntgpt}
+couples a random-forest network IDS on KDD99 with GPT-3.5 for explanation.
+\emph{Leaves open:} both target rule generation or single-host anomaly explanation, not
+reconstruction of multi-stage AWS control-plane kill chains with mechanical scoring.
+
+\subsection{Cloud-native threat detection}
+Managed services (e.g., GuardDuty) and attack-emulation tooling such as Stratus Red
+Team~\cite{stratus} and CloudGoat~\cite{cloudgoat} define ATT\&CK-mapped AWS techniques.
+\emph{Leaves open:} these are detectors or attack generators, not open benchmarks with
+ground-truth manifests and a published matching function.
+
+\subsection{Multi-agent architectures for security}
+Agentic and provenance-based hunting~\cite{mukherjee2025provenance} report gains from
+RAG and agent orchestration on host-provenance graphs.
+\emph{Leaves open:} host endpoint forensics, not cloud control-plane correlation; the
+value of decomposition is asserted, rarely ablated---our H2 tests it directly.
+
+\subsection{Security benchmarks: design, coverage, and gaps}
+Table~\ref{tab:coverage} positions CloudKC-Bench against the five closest benchmarks.
+CyberSOCEval~\cite{deason2025cybersoceval} evaluates malware analysis and threat-intel
+reasoning; ExCyTIn-Bench~\cite{wu2025excytin} builds an \emph{Azure} threat-investigation
+benchmark scored as QA over investigation graphs; OrgForge-IT~\cite{orgforge2026} is a
+verifiable synthetic \emph{insider-threat} benchmark; and ACSE-Eval~\cite{acseeval2025}
+evaluates LLM threat \emph{modeling} of AWS architecture/IaC. No competitor satisfies all
+six properties simultaneously.
+\emph{Leaves open:} an AWS-control-plane, telemetry-driven, machine-checkable
+kill-chain-reconstruction benchmark---the gap CloudKC-Bench fills.
+
+\begin{table*}[t]
+\caption{Coverage gap. \cmark~yes, \xmark~no, $\circ$~partial. Assessed from the
+papers (Jul 2026); partial cells to be confirmed against full text.}
+\label{tab:coverage}
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+Property & CyberSOCEval & ExCyTIn & OrgForge-IT & LLMCloudHunter & ACSE-Eval & \textbf{Ours} \\
+\midrule
+AWS control-plane specific      & \xmark & \xmark & \xmark & $\circ$ & $\circ$ & \cmark \\
+Multi-stage kill chains         & \xmark & \cmark & \xmark & \xmark  & \xmark  & \cmark \\
+Open + reproducible             & \cmark & \cmark & \cmark & \xmark  & \cmark  & \cmark \\
+Machine-checkable ground truth  & $\circ$ & \cmark & \cmark & \xmark & $\circ$ & \cmark \\
+ATT\&CK-for-Cloud mapped        & \xmark & \xmark & \xmark & $\circ$ & $\circ$ & \cmark \\
+Real-AWS validated              & \xmark & \xmark & \xmark & \xmark  & \xmark  & $\circ$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Kill-chain and ATT\&CK modeling}
+MITRE ATT\&CK for Cloud~\cite{mitreattack} provides the technique taxonomy we use to
+label stages. \emph{Leaves open:} a scored reconstruction task over live telemetry.
+
+% =====================================================================
+\section{CloudKC-Bench Design}\label{sec:bench}
+% Owner: Atishay
+\subsection{Scenario taxonomy}
+The benchmark comprises $\sim$70 scenarios across five never-pooled categories:
+single-domain attacks (12; a sanity floor), multi-stage kill chains (15; the primary
+test), low-and-slow evasion (12), ephemeral compute (10), and benign noise (10;
+false-positive measurement), plus a sealed held-out set (10). Every scenario cites a
+documented real incident pattern (e.g., the Capital One 2019 SSRF$\rightarrow$IMDS
+$\rightarrow$S3 chain~\cite{capitalone2019}, SCARLETEEL~\cite{scarleteel2023}, TeamTNT
+cryptojacking~\cite{teamtnt2020}) and one or more ATT\&CK-for-Cloud techniques.
+
+\subsection{Ground-truth manifests and the answer-key boundary}
+Each scenario ships a machine-checkable manifest: an ordered list of stages, each with a
+technique id, telemetry source, evidence event ids, and a timestamp range, validated
+against a published JSON Schema. Crucially, ground truth lives \emph{only} in the
+manifest and an \texttt{is\_ground\_truth} flag---never in the event payload the systems
+read---so an attack API call is, in isolation, indistinguishable from benign activity.
+
+\subsection{Mechanical matching function}
+Scoring is an exact, deterministic function of (reconstructed chain, manifest); no human
+or LLM judging. A reported stage matches a ground-truth stage iff the technique id and
+telemetry source match \emph{and} the cited evidence overlaps the ground-truth evidence
+(preventing ``right answer, wrong reason'' credit). Matching is one-to-one; partial credit
+is awarded per stage; order is scored via a documented penalty. Benign scenarios have no
+stages, so any reported stage is a false positive.
+
+\subsection{Quality controls}
+Real-incident grounding, inter-rater review of $\geq$20\% of scenarios, and an authorship
+separation for the held-out set (sealed before system finalisation) address the
+synthetic-realism and selection-bias threats. A measured cross-service clock model
+documents delivery lag/skew so temporal claims are defensible.
+
+% =====================================================================
+\section{System Architecture}\label{sec:system}
+% Owner: Atishay. The architecture is the instrument, not the contribution.
+Telemetry is normalised into a SQLite state cache. A deterministic, instrumented
+pre-filter reduces event volume before any LLM call, recording events-in/out and
+pre-filter recall. The full system (arm A1) distributes filtered events to four domain
+hunters (CloudTrail, VPC, S3, EC2), whose candidate detections a coordinator correlates
+into an ordered chain. All arms emit the identical reconstructed-chain schema, so the
+comparison is not confounded by output format. The LLM backend is pluggable---a
+deterministic offline backend for reproducible pipeline tests, a local Ollama model, or a
+hosted API (Gemini/OpenAI-compatible)---and is pinned per experiment.
+
+% =====================================================================
+\section{Experimental Setup}\label{sec:setup}
+% Owner: Atishay
+\subsection{Arms and baselines}
+Four arms hold model, telemetry, and compute fixed and vary one factor each:
+\textbf{A1} pre-filter + multi-agent; \textbf{A2} pre-filter + single agent
+(A1 vs A2 isolates decomposition, H2); \textbf{A3} single agent on raw logs
+(A2 vs A3 isolates the pre-filter, C3); \textbf{A4} pre-filter + deterministic rules,
+no LLM (A1/A2 vs A4 isolates the LLM, H1). An independent community Sigma-rules
+baseline (\textbf{SIGMA}) guards against the objection that A4 was designed to lose.
+
+LLMCloudHunter~\cite{schwartz2025llmcloudhunter} generates detection \emph{rules} from
+CTI reports rather than reconstructing kill chains from live telemetry; comparing it on
+CloudKC-Bench would be a task mismatch, so it is positioned in the related-work taxonomy
+(Section~\ref{sec:related}) rather than run as a benchmark arm. GuardDuty requires
+real-AWS access with a $\geq$7-day warm-up period; it is deferred to a real-AWS
+follow-up study (Section~\ref{sec:threats}); SIGMA already provides an independent
+rules comparison that does not depend on a managed service.
+
+\subsection{Environments}
+Scenarios run in two environments emitting the identical schema: a reproducible layer
+(deterministic synthetic generation / LocalStack), and---budget-gated---a real-AWS
+sandbox for external validity. Real-AWS results, where available, are the headline;
+the reproducible layer is the consistency check.
+
+\subsection{Pre-registration and power}
+The research question, H1's required margin ($\geq 0.15$ absolute multi-stage recall),
+H2's equivalence band, and all tests were fixed in writing before any result. An a-priori
+power analysis (paired design, $\alpha=0.05$, power $0.80$) shows that after
+Holm--Bonferroni over the full comparison grid no category reaches the corrected $n$ for
+moderate effects; we therefore pre-register \emph{two} primary confirmatory tests
+(H1 and H2 on the multi-stage category) and treat all other comparisons as exploratory,
+reported with effect sizes and bootstrap confidence intervals.
+\todo{state the pinned model + date + seed list once Anna's run is fixed.}
+
+\subsection{Metrics and protocol}
+Primary metrics are TPR/recall, FPR, precision, F1, and AUC where meaningful, reported
+\emph{per category}. The unit of analysis is the scenario; seeds are repeated measures
+aggregated to the scenario level. Effect sizes (Cohen's $d_z$) and bootstrap 95\%
+confidence intervals are primary; $p$-values (paired permutation test) are secondary and
+Holm--Bonferroni corrected.
+
+\textbf{TCP disjoint-stream robustness test (DoD item 11).}
+The correlator assigns stage order by sorting candidates on \texttt{event\_time};
+different telemetry sources carry source-specific delivery lags (CloudTrail $\sim$7 min,
+VPC $\sim$75 s, EC2 $\sim$30 s). We sweep a per-source timestamp offset $\Delta T \in
+[-900, +900]$ s and measure the minimum $|\Delta T|$ at which \texttt{order\_penalty}>0
+(\emph{robustness threshold}). This threshold is reported alongside the clock-model skews
+(Section~\ref{sec:background}) to justify the correlation window choice. Crucially,
+recall is invariant to $\Delta T$ (the matching function does not use timestamps), so a
+rising order penalty represents a pure ordering failure rather than a detection failure.
+Run \texttt{python -m benchmark.cli tcp-robustness} to reproduce.
+
+% =====================================================================
+\section{Results}\label{sec:results}
+% Owner: Atishay. Fill from `benchmark.cli analyze` (per-category CIs) + the run CSVs.
+\subsection{Primary hypotheses}
+\result{H1 verdict (SUPPORTED / NOT SUPPORTED): best\{A1,A2\} vs A4 multi-stage recall,
+mean difference, 95\% CI, $d_z$, Holm-corrected decision.}
+\result{H2 verdict (FAIL TO REJECT / REJECT): A1 vs A2 multi-stage F1, mean difference,
+95\% CI, $d_z$.}
+
+\begin{table}[t]
+\caption{Per-category recall (mean [95\% CI]) by arm. Exploratory; not pooled.}
+\label{tab:percat}
+\centering
+\begin{tabular}{llc}
+\toprule
+Arm & Category & Recall [95\% CI] \\
+\midrule
+A1--A4, SIGMA & single-domain / multi-stage / low-and-slow / & \result{table} \\
+              & ephemeral / benign & \result{from analyze} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pre-filter cost and latency (C3)}
+\result{filtering ratio per category; token cost per scenario per arm (A2 vs A3);
+latency mean/p95 per arm; cost--accuracy trade-off figure.}
+
+% =====================================================================
+\section{Failure-Mode Analysis}\label{sec:failure}
+% Owner: Atishay. Fill from `benchmark.cli failures`.
+\result{per-technique miss rates (which TTPs are consistently missed and why);
+false-positive characterisation (systematic vs random; benign-activity triggers);
+LLM-specific failures (hallucinated attributions, context-window misses, over-correlation);
+pre-filter recall stress on low-and-slow (ground-truth evidence dropped before the LLM).}
+If H1 is supported, this section tells practitioners when \emph{not} to trust the LLM;
+if H1 fails, explaining \emph{why} becomes the main analytical contribution.
+
+% =====================================================================
+\section{Discussion}\label{sec:discussion}
+% Owner: Anna
+\result{interpretation of H1/H2 for practitioners; when cross-domain LLM correlation is
+worth its cost; what the pre-filter buys; deployment guidance from the failure modes.}
+
+% =====================================================================
+\section{Threats to Validity}\label{sec:threats}
+% Owner: shared (docs/week1/15)
+\emph{External:} synthetic scenarios may not generalise---mitigated by real-incident
+grounding and (partial) real-AWS validation. \emph{Authorship bias:} same team authors
+scenarios and system---mitigated by a sealed held-out set and inter-rater review.
+\emph{Construct:} bespoke metrics may reward conformity---mitigated by leading with
+standard metrics. \emph{Internal:} LLM non-determinism---mitigated by a pinned model,
+multi-seed runs, and reported variance. \emph{Statistical:} small per-category $n$---the
+power analysis restricts confirmatory claims to two primary tests; other categories are
+descriptive. \emph{Reproducibility:} model drift/deprecation---mitigated by version
+pinning and full artifact release; adversarial LLM evasion is explicitly out of scope.
+\emph{Baseline coverage:} GuardDuty requires real-AWS access with a $\geq$7-day warm-up;
+it is deferred to a follow-up study. LLMCloudHunter generates detection rules from CTI
+reports (a different task) and is therefore positioned in related work rather than scored
+on the benchmark; the community Sigma baseline (SIGMA arm) provides an independent
+rules-only comparison that does not require a managed AWS service.
+
+% =====================================================================
+\section{Conclusion}\label{sec:conclusion}
+% Owner: Anna
+\result{summary of findings including any negative results; the benchmark as the durable
+contribution; future work (real-AWS breadth, external baselines, Zeek network telemetry,
+adversarial evasion).}
+
+\section*{Availability}
+The generator, manifests, schema, matching function, and analysis scripts are released at
+\url{https://github.com/therealannaa/CloudSentinel} \todo{swap to the archival DOI on release}.
+
+\section*{Acknowledgment}
+The authors thank Dr.~S.~Nagasundari (ISFCR, PES University) for supervision.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

@@ -1,1 +1,309 @@
-# CloudSentinel
+# CloudSentinel / CloudKC-Bench
+
+An open benchmark and controlled study of LLM cross-domain correlation for AWS multi-stage kill-chain
+reconstruction. **Team:** Atishay & Anna · ISFCR, PES University · Supervisor: Dr. S. Nagasundari.
+
+The frozen research design (P1) lives in [`docs/week1/`](docs/week1/00_README.md); the master plan is
+[`docs/RESEARCH_PLAN_v3.md`](docs/RESEARCH_PLAN_v3.md).
+
+---
+
+# Phase P1 — Freeze Design (Journal-Tier, v3)
+
+**Project:** CloudKC-Bench — An Open Benchmark and Controlled Study of LLM Cross-Domain Correlation for AWS
+Multi-Stage Kill-Chain Reconstruction
+**Team:** Atishay & Anna | ISFCR, PES University | **Supervisor:** Dr. S. Nagasundari
+**Target venue:** IEEE TIFS / Computers & Security *(confirm with supervisor)*
+
+> **v3 (journal) — changed from v2:** This package was upgraded from the workshop-tier v2 plan to the
+> journal-tier v3 plan (`CloudSentinel_Journal_Plan_v3.md`). Scenario count 24 → **~70**; LocalStack → **real
+> AWS primary** (LocalStack as reproducibility layer); GuardDuty-only stretch → **3 external baselines**; plus
+> new journal-required artifacts: **formal power analysis, coverage-gap table, structured literature review,
+> failure-mode analysis, cost/latency as first-class results, inter-rater check.** v2 history is preserved in
+> git. The folder name `week1/` is kept (it is now the **P1 design-freeze package**, not a single calendar week).
+
+---
+
+## What Phase P1 is (and why there is still no experiment code)
+
+The project's primary deliverable is a **journal-grade research benchmark**, not just a working system. The
+dominant reason security-ML papers are rejected is that measurement decisions were made *after* seeing
+results. P1 prevents that by writing down and freezing — in advance — every decision that could later be
+massaged: hypotheses, **pre-registered thresholds + a formal power analysis**, the ~70-scenario set, the
+ground-truth manifest format, the scoring algorithm, the baselines, and the novelty (coverage-gap) claim.
+
+> **The P1 rule:** no experiment/infrastructure code until these docs are frozen. P1 produces **documents and
+> schemas**. The only executable artifacts are the **power-analysis script** (it computes the frozen
+> n-per-category) and the schema validator.
+
+Pre-existing repo code (`collectors/`, `tools/`, `config.py`, `docker-compose.yml`, …) remains **Week-2/3
+scaffolding**; these freeze docs are the authoritative spec it must conform to.
+
+---
+
+## Deliverables
+
+### P1 freeze package (`docs/week1/`)
+
+| # | File | Owner | Freeze |
+|---|------|-------|--------|
+| 0 | [00_README.md](00_README.md) (this file) | shared | — |
+| 1 | [01_pre_registration.md](01_pre_registration.md) — RQ, H1, H2, thresholds, protocol | **Atishay** (Anna co-signs) | 🔒 |
+| 2 | [02_scenario_taxonomy.md](02_scenario_taxonomy.md) — **~70** scenario catalog | Atishay (SD+KC) / Anna (LS,EP,BN,HO) | — |
+| 3 | [03_manifest_schema.md](03_manifest_schema.md) + [manifest.schema.json](manifest.schema.json) | **Atishay** | 🔒 ⚠️ |
+| 4 | [04_matching_function_spec.md](04_matching_function_spec.md) | **Anna** | 🔒 ⚠️ |
+| 5 | [05_sqlite_state_cache_schema.md](05_sqlite_state_cache_schema.md) | **Atishay** | — |
+| 6 | [06_clock_model.md](06_clock_model.md) — dual-environment | **Anna** | — |
+| 7 | [07_sync_checkpoint_agenda.md](07_sync_checkpoint_agenda.md) | shared | — |
+| 8 | [08_power_analysis.md](08_power_analysis.md) + [power_analysis.py](power_analysis.py) — **NEW** | **Atishay** | 🔒 |
+| 9 | [09_coverage_gap_table.md](09_coverage_gap_table.md) — **NEW** (C1 novelty) | Anna | — |
+| 10 | [10_real_aws_setup.md](10_real_aws_setup.md) — **NEW** (budget-gated) | shared | — |
+| 11 | [11_external_baselines.md](11_external_baselines.md) — **NEW** (3 baselines) | Anna | — |
+| 12 | [12_literature_review.md](12_literature_review.md) — **NEW** (25–30 papers) | Anna | — |
+| 13 | [13_failure_mode_analysis_plan.md](13_failure_mode_analysis_plan.md) — **NEW** (C4, run in P4/P5) | shared | — |
+| 14 | [14_cost_latency_plan.md](14_cost_latency_plan.md) — **NEW** (C3 results) | Atishay | — |
+| 15 | [15_threats_to_validity.md](15_threats_to_validity.md) — **NEW** | shared | — |
+
+**Master roadmap:** [../RESEARCH_PLAN_v3.md](../RESEARCH_PLAN_v3.md) — P1–P5 phases, owners, dates, gating, DoD.
+
+**Legend:** 🔒 freeze-first · ⚠️ blocking dependency for the other person.
+
+---
+
+## Definition of Done — P1 (journal, v3 §13 subset due in P1)
+
+- [ ] Pre-registration signed + dated (`01`).
+- [ ] **Formal power analysis written and frozen** (`08`); short categories flagged descriptive-only.
+- [ ] Manifest schema merged (`03` + `manifest.schema.json`).
+- [ ] Matching-function spec merged (`04`).
+- [ ] **~70 scenarios + held-out authored** with real-incident grounding (`02`); held-out marked for sealing.
+- [ ] **Inter-rater check** process defined; ≥20% of scenarios slated for independent review (`02`).
+- [ ] **Coverage-gap table** structure in place; competitor cells flagged "read the paper" (`09`).
+- [ ] External-baselines spec merged (`11`); literature-review skeleton merged (`12`).
+- [ ] Real-AWS setup + **budget estimate** drafted for supervisor sign-off (`10`).
+- [ ] Sync checkpoint held; venue / budget / LLMCloudHunter-scope decisions logged (`07`).
+
+The full 12-item *paper-submittable* DoD lives in [../RESEARCH_PLAN_v3.md](../RESEARCH_PLAN_v3.md) (§13).
+
+## Glossary
+See the project study guide (`cloudsentinel_study_guide.md`), "Quick Reference: Key Terms".
+
+## Phase P2 — Benchmark generator (`benchmark/`)
+
+The `benchmark/` package generates all ~69 taxonomy scenarios as telemetry + machine-checkable ground-truth
+manifests, ingests them into the SQLite state cache, scores reconstructed chains, seals the held-out set, and
+measures the clock model.
+
+```
+benchmark/
+  events.py        normalized telemetry Event (-> events table)
+  manifest.py      Manifest/Stage model + JSON-Schema validation (docs/week1/03)
+  matching.py      mechanical matching function (docs/week1/04)
+  state_cache.py   SQLite schema + helpers (docs/week1/05)
+  heldout.py       held-out sealing + tamper detection
+  clock_model.py   cross-service delivery-lag measurement (docs/week1/06)
+  runner.py        generate a scenario set end-to-end
+  experiment.py    P3 ablation runner (A1-A4 x scenarios x seeds -> scored)
+  analysis.py      per-category aggregation + C3 cost/latency table
+  cli.py           command-line entry points
+  simulator/
+    specs.py       machine-readable mirror of the taxonomy (docs/week1/02)
+    builder.py     deterministic telemetry + manifest generator
+  arms/            the four ablation arms (P3)
+    signatures.py  event -> candidate TTP detection knowledge
+    prefilter.py   deterministic instrumented pre-filter (C3)
+    correlate.py   candidates -> reconstructed kill chain (coordinator)
+    llm_client.py  pluggable LLM backend (deterministic offline | Gemini)
+    arms_impl.py   A1 (multi-agent) / A2 (single) / A3 (raw) / A4 (rules-only)
+```
+
+### Quick start
+
+```bash
+pip install -r requirements.txt          # adds jsonschema
+
+python3 -m benchmark.cli selfcheck         # run the WHOLE pipeline, report PASS/FAIL
+
+./run_scenarios.sh dev                    # 59 dev scenarios -> manifests + events
+./run_scenarios.sh all                    # dev + held-out, then seal held-out
+
+# or the CLI directly:
+python3 -m benchmark.cli generate --set all
+python3 -m benchmark.cli summary
+python3 -m benchmark.cli seal-heldout
+python3 -m benchmark.cli clock --set dev
+
+# P3 — run the four-arm ablation and score it
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --csv results.csv
+
+# P4 — H1/H2 verdicts + bootstrap CIs + effect sizes from the last run
+python3 -m benchmark.cli analyze --csv results_by_category.csv
+
+pytest                                    # 543 tests (P1-P4 + backends)
+```
+
+`selfcheck` generates all 69 scenarios in a throwaway workspace and verifies
+generate → validate → ingest → seal → **score** → clock end-to-end (10/10 checks).
+
+### Environment (LocalStack + MinIO)
+
+```bash
+docker compose up -d                      # LocalStack (AWS APIs) + MinIO (S3 sink)
+```
+
+### Backends
+
+The simulator has two backends, both emitting the identical event + manifest schema:
+
+- **`synthetic`** (default) — deterministic telemetry, no external dependency. The reproducibility layer;
+  runs on a laptop / CI.
+- **`localstack`** — fires **real boto3 calls** against LocalStack (resources really created/read/deleted)
+  and captures the responses as telemetry (`benchmark/simulator/localstack_backend.py`). Needs `boto3` +
+  `docker compose up`. Real AWS is budget-gated (`docs/week1/10`).
+
+```bash
+docker compose up -d
+pip install boto3
+python3 -m benchmark.cli localstack-check                     # REACHABLE?
+ENVIRONMENT=localstack ./run_scenarios.sh dev                # capture REAL telemetry
+python3 -m benchmark.cli run-arms --environment localstack    # score arms on it
+```
+
+> Honest scope: LocalStack community CloudTrail history is limited, so we capture the calls we issue
+> (what a collector at the API boundary sees) + resource state. Console-login and IMDS steps are proxied with
+> `sts:GetCallerIdentity` (tagged `proxy`); VPC Flow Logs aren't produced by LocalStack, so network events are
+> tagged `synthetic_network` (Zeek supplies these in the full design). The backend's logic is unit-tested
+> offline with a fake boto3 (`tests/test_localstack_backend.py`); run the commands above on a networked host
+> to capture live.
+
+### Real LLM — Local Ollama (free, no quota, reproducible) ⭐ recommended
+
+A1–A3 use a deterministic offline backend by default. Point them at a **local Ollama** model for real
+LLM reasoning at **zero cost, no API key, no rate limits** — and a locally-hosted open model is a
+reproducibility win for the paper (anyone can re-run it). Works on any laptop with Ollama.
+
+**One-time setup (any laptop):**
+```bash
+# 1. install Ollama — macOS: `brew install ollama` or download from https://ollama.com
+#    (Linux: `curl -fsSL https://ollama.com/install.sh | sh`)
+# 2. start the server (own terminal, or it runs as a background service)
+ollama serve
+
+# 3. pull a model sized to your RAM (see table below)
+ollama pull llama3.1            # 8B, ~4.7 GB — needs ~8 GB RAM
+```
+
+**Pick a model for your hardware:**
+
+| Laptop RAM | Model (`ollama pull …`) | Notes |
+|---|---|---|
+| 8 GB (e.g. MacBook Air M-series) | `llama3.2:3b` or `qwen2.5:7b` | small + fast; lower accuracy |
+| 16 GB | `llama3.1` (8B) or `gemma2:9b` | good balance — recommended |
+| 32 GB+ | `qwen2.5:14b`, `gemma2:27b` | best quality, slower |
+
+**Run the arms against it:**
+```bash
+export LLM_BASE_URL=http://localhost:11434/v1
+export LLM_API_KEY=ollama
+export LLM_MODEL=llama3.1                       # match what you pulled
+
+# or just: ./run_ollama.sh                       # does the smoke test for you
+
+# smoke test first — 1 scenario, 1 arm, 1 seed
+python3 -m benchmark.cli run-arms --arms A2 --set dev --limit 1 --seeds 1 --environment localstack
+# -> "LLM backend: ollama"
+
+# then the full ablation (no quota to worry about — just time)
+python3 -m benchmark.cli run-arms --arms A1,A2,A3,A4 --set dev --seeds 3 --environment localstack --csv results_ollama.csv
+```
+
+> Tips: the **full run is ~1000+ local generations** (A1 = 4 hunter calls × 59 × 3) — slow on a small laptop,
+> so start with `--limit 5 --seeds 1`. A smaller/faster model + fewer seeds while iterating; scale up for the
+> final numbers. A4 and the deterministic backend make **no** LLM calls. The client robustly extracts JSON
+> even when a small model wraps it in prose, and raises a clear error (with `ollama serve` guidance) if the
+> server is unreachable. Record the exact model in `docs/week1/01` as the pinned LLM.
+
+### Windows quickstart (RTX 2050 / any NVIDIA laptop) — fastest path to results
+
+This path needs **no Docker and no AWS** — just Python + Ollama. Telemetry is generated synthetically (the
+arms run on the exact same scenarios); swap to `--environment localstack` later if you want real AWS telemetry.
+
+```powershell
+# 1. clone + enter
+git clone https://github.com/therealannaa/CloudSentinel.git
+cd CloudSentinel
+git checkout dev
+
+# 2. minimal deps (NOT the full requirements.txt)
+pip install -r requirements-bench.txt
+
+# 3. Ollama: install from https://ollama.com/download/windows  (auto-uses the RTX 2050 GPU)
+ollama pull llama3.2:3b          # 3B fits a 4 GB RTX 2050 nicely; qwen2.5:3b also good
+
+# 4. sanity-check the whole pipeline (no LLM, no network) — should print 10/10 PASS
+python -m benchmark.cli selfcheck
+
+# 5. run the arms on a local model — smoke test then full
+$env:LLM_MODEL = "llama3.2:3b"
+.\run_ollama.ps1                 # smoke: 1 scenario  ->  "LLM backend: ollama"
+.\run_ollama.ps1 full            # full A1-A4 x dev x 3 seeds -> results_ollama.csv
+```
+
+Notes for Windows: use **`python`** (not `python3`); run the `.ps1` from PowerShell. The RTX 2050 (4 GB VRAM)
+runs **3B models on-GPU** smoothly — prefer `llama3.2:3b` / `qwen2.5:3b`; 7B models work but partly offload to
+CPU (slower). `pytest` runs the 530-test suite identically on Windows. Real LocalStack telemetry is optional
+and needs Docker Desktop + `pip install boto3`.
+
+### Alternative — hosted APIs (Gemini / Groq / OpenRouter / GitHub Models)
+
+The same `LLM_BASE_URL` adapter works with any OpenAI-compatible endpoint (Groq, OpenRouter, GitHub Models,
+Cerebras…): set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. For Gemini specifically, leave `LLM_BASE_URL`
+unset and set `GEMINI_API_KEY` + `GEMINI_MODEL` (use `gemini-1.5-flash` — `gemini-2.0-flash` shows
+`limit: 0` on the free tier). All paths retry transient rate-limits and abort cleanly rather than writing
+misleading zero-scores; all are unit-tested offline (`tests/test_llm_backend.py`).
+
+### What P2 delivers (Definition of Done)
+
+- `docker-compose.yml` brings up LocalStack + MinIO (environment layer).
+- `./run_scenarios.sh dev` produces all 59 dev manifests, every one schema-valid.
+- Matching function implemented + unit-tested (`tests/test_benchmark_matching.py`).
+- Held-out set sealed with checksum lock; tamper-detected (`benchmark/heldout.py`).
+- Clock model measured (synthetic now; LocalStack/real-AWS per `docs/week1/06`).
+
+Generated manifests/DB are reproducible and git-ignored; regenerate with `run_scenarios.sh`.
+
+---
+
+## Phase P3 — Four-arm ablation (`benchmark/arms/`)
+
+`run-arms` runs A1–A4 over a scenario set across seeds, scores each reconstruction with the matching function,
+and writes `runs` / `reconstructed_stages` / `scores` to the state cache, plus a per-category results table.
+
+| Arm | Configuration | Isolates |
+|-----|---------------|----------|
+| A1 | pre-filter + 4 domain hunters + coordinator | reference (full system) |
+| A2 | pre-filter + single generalised agent | A1 vs A2 → multi-agent value (H2) |
+| A3 | **no** pre-filter + single agent on raw logs | A2 vs A3 → pre-filter value (C3) |
+| A4 | pre-filter + deterministic rules, **no LLM** | A1/A2 vs A4 → LLM value (H1) |
+| SIGMA | community CloudTrail+S3 Sigma rules, **no LLM** | external baseline (`docs/week1/11`); A4 vs SIGMA shows A4 isn't rigged |
+
+`SIGMA` is opt-in (`--arms A1,A2,A3,A4,SIGMA`). It's an independent community-style ruleset with no VPC/flow-log
+coverage, so it trails A4 on network-ending chains — a realistic, honest baseline, not a strawman.
+
+**LLM backend.** A1–A3 use a pluggable client: the **deterministic** offline backend (default — runs with no
+API key, so the whole ablation is testable) or **Gemini** (auto-selected when `GEMINI_API_KEY` is set). A4 is
+pure rules. The arms read only arm-visible columns (`event_id`, `source`, `event_time`, `raw_json`) — never
+`is_ground_truth` (the answer-key boundary, enforced by `ArmEvent` and tests).
+
+> **Honest status.** The full P3 machinery — pre-filter (instrumented), A4 rules, the four arms, the runner,
+> scoring, multi-seed, per-category analysis with C3 cost/latency — is complete and tested (`run-arms` scores
+> 708 runs on the dev set). With the **deterministic** backend the LLM arms (A1/A2/A3) detect identically to
+> A4 and differ only in cost/latency, so **comparative H1/H2 numbers are NOT meaningful yet** — they require
+> (a) a real LLM via `GEMINI_API_KEY` and (b) real telemetry (LocalStack/real-AWS). The pipeline is ready to
+> produce real results the moment those two inputs are supplied.
+
+### Still ahead (P3 completion → P4)
+A first **live run** (LocalStack telemetry + `GEMINI_API_KEY`) to get real H1/H2 numbers — both paths are
+wired and offline-tested, they just need network + a key. Then: Zeek for real VPC-flow telemetry; the external
+baselines (GuardDuty, LLMCloudHunter reimpl, community Sigma — `docs/week1/11`); and P4 statistics (bootstrap
+CIs, Holm-Bonferroni, effect sizes per `docs/week1/08`).

@@ -1,0 +1,12 @@
+# Minimal dependencies to RUN the benchmark + arms + tests (cross-platform).
+# This is all you need for the Ollama + synthetic path — no AWS, no heavy AI libs.
+# (The full requirements.txt also pulls crewai/pandas/etc. used elsewhere in the repo.)
+jsonschema
+requests
+python-dotenv
+pytest
+
+# Optional, only if you want these extras:
+# boto3         # ONLY for real LocalStack telemetry (--environment localstack)
+# statsmodels   # ONLY for docs/week1/power_analysis.py
+# scipy         # ONLY for docs/week1/power_analysis.py
