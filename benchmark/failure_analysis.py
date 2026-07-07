@@ -135,6 +135,59 @@ def analyze(db_path, environment=None, ttp_match="exact"):
     }
 
 
+def technique_confusion(db_path, environment=None, arm=None):
+    """For each ground-truth attack event, compare its TRUE technique to the one the
+    arm assigned (from agent_outputs). Reveals *how* technique attribution fails —
+    e.g. parent-vs-sub, wrong family, or not-detected. Needs runs that captured
+    agent_outputs (runs from this version onward)."""
+    from collections import defaultdict, Counter
+    from benchmark.matching import _base_ttp
+    conn = state_cache.connect(db_path)
+    clauses, args = [], []
+    if environment:
+        clauses.append("r.environment=?"); args.append(environment)
+    if arm:
+        clauses.append("r.arm=?"); args.append(arm)
+    wc = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    runs = conn.execute(
+        f"SELECT r.run_id, r.arm, r.scenario_id, s.manifest_path "
+        f"FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id {wc}", args).fetchall()
+
+    man, true_ttp = {}, {}
+    conf = defaultdict(lambda: defaultdict(Counter))   # arm -> true_ttp -> Counter(assigned)
+    for r in runs:
+        sid = r["scenario_id"]
+        if sid not in true_ttp:
+            p = r["manifest_path"]
+            if p not in man:
+                man[p] = Manifest.load(p).to_dict()
+            true_ttp[sid] = {eid: st["ttp_id"] for st in man[p]["stages"]
+                             for eid in st["evidence_event_ids"]}
+        assigned = {}
+        for row in conn.execute("SELECT output_json FROM agent_outputs WHERE run_id=?", (r["run_id"],)):
+            for c in json.loads(row["output_json"]):
+                assigned[c["event_id"]] = c["ttp_id"]
+        for eid, tt in true_ttp[sid].items():
+            conf[r["arm"]][tt][assigned.get(eid, "<not-detected>")] += 1
+    conn.close()
+
+    rows = []
+    for a in sorted(conf):
+        for tt, counter in sorted(conf[a].items()):
+            n = sum(counter.values())
+            exact = counter.get(tt, 0)
+            parent = sum(c for k, c in counter.items()
+                         if k != "<not-detected>" and _base_ttp(k) == _base_ttp(tt))
+            nd = counter.get("<not-detected>", 0)
+            wrong = [(k, c) for k, c in counter.most_common()
+                     if k not in (tt, "<not-detected>") and _base_ttp(k) != _base_ttp(tt)]
+            rows.append({"arm": a, "true_ttp": tt, "n": n,
+                         "exact_pct": round(exact / n, 3), "parent_pct": round(parent / n, 3),
+                         "not_detected_pct": round(nd / n, 3),
+                         "top_wrong": wrong[:3]})
+    return rows
+
+
 def print_report(rep):
     if rep.get("error"):
         print(rep["error"])

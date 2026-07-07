@@ -164,6 +164,14 @@ def insert_run(conn, run_id, arm, environment, scenario_id, seed,
     conn.commit()
 
 
+def insert_agent_output(conn, run_id, agent_id, output_json):
+    """Store an arm's raw proposals (candidates) for provenance / failure analysis."""
+    conn.execute(
+        "INSERT OR REPLACE INTO agent_outputs (run_id, agent_id, output_json) VALUES (?,?,?)",
+        (run_id, agent_id, output_json))
+    conn.commit()
+
+
 def insert_score(conn, run_id, score_result):
     s = score_result
     conn.execute(
