@@ -155,6 +155,7 @@ def technique_confusion(db_path, environment=None, arm=None):
 
     man, true_ttp = {}, {}
     conf = defaultdict(lambda: defaultdict(Counter))   # arm -> true_ttp -> Counter(assigned)
+    total_assigned = 0
     for r in runs:
         sid = r["scenario_id"]
         if sid not in true_ttp:
@@ -167,9 +168,16 @@ def technique_confusion(db_path, environment=None, arm=None):
         for row in conn.execute("SELECT output_json FROM agent_outputs WHERE run_id=?", (r["run_id"],)):
             for c in json.loads(row["output_json"]):
                 assigned[c["event_id"]] = c["ttp_id"]
+        total_assigned += len(assigned)
         for eid, tt in true_ttp[sid].items():
             conf[r["arm"]][tt][assigned.get(eid, "<not-detected>")] += 1
     conn.close()
+
+    # No captured proposals for these runs -> the run predates agent_outputs capture.
+    # Return empty so the CLI prints the "re-run to capture" message instead of a
+    # misleading all-missed table.
+    if total_assigned == 0:
+        return []
 
     rows = []
     for a in sorted(conf):
