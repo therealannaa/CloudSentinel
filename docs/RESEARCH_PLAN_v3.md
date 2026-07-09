@@ -34,11 +34,11 @@ C4 failure-mode taxonomy · C5 reproducibility artifact. (Details: `CloudSentine
 
 | Phase | Focus | Key tasks | Owner | Target |
 |-------|-------|-----------|-------|--------|
-| **P1 · Freeze** | Pre-registration + benchmark spec + power analysis | Lock RQ/H1/H2 + thresholds; **freeze power analysis** (`08`); author **~70 scenarios** w/ grounding (`02`); publish manifest schema (`03`) + matching fn (`04`); **coverage-gap table** structure (`09`); baselines spec (`11`); lit-review skeleton (`12`); real-AWS setup + **budget** (`10`); supervisor sign-off (`07`). | Shared | **[~Wk 1–2]** |
-| **P2 · Env + Benchmark** | LocalStack env + scenario generator (+ real-AWS on budget) | LocalStack/MinIO/Zeek/Docker up; `attack_simulator` emits all scenarios + manifests; collectors → SQLite (`05`); **freeze held-out set**; **inter-rater check on ≥20%**; clock model — LocalStack now, real-AWS on approval (`06`). | Anna (infra) / Atishay (scenarios) | **[~Wk 3–6]** |
+| **P1 · Freeze** | Pre-registration + benchmark spec + power analysis | Lock RQ/H1/H2 + thresholds; **freeze power analysis** (`08`); author **~70 scenarios** w/ grounding (`02`); publish manifest schema (`03`) + matching fn (`04`); **coverage-gap table** structure (`09`); baselines spec (`11`); lit-review skeleton (`12`); real-AWS setup + **budget** (`10`); supervisor sign-off (`07`). | Shared | **DONE** ✅ (`docs/week1/`) |
+| **P2 · Env + Benchmark** | LocalStack env + scenario generator (+ real-AWS on budget) | LocalStack/MinIO/Zeek/Docker up; `attack_simulator` emits all scenarios + manifests; collectors → SQLite (`05`); **freeze held-out set**; **inter-rater check on ≥20%**; clock model — LocalStack now, real-AWS on approval (`06`). | Anna (infra) / Atishay (scenarios) | **DONE** ✅ (`benchmark/`) |
 | **P3 · Arms + Baselines** | 4 arms + 1 external baseline | A1 (hunters+coordinator), A2 (single agent), A3 (raw-log), A4 (rules + **community Sigma**); pre-filter instrumentation for cost/latency (`14`). GuardDuty and LLMCloudHunter **dropped** (see `11_external_baselines.md`). | Atishay (A1, A4, pre-filter) / Anna (collectors, A2/A3) | **DONE** ✅ |
-| **P4 · Core Experiment** | Run everything; measure | Multi-seed runs on LocalStack (repro) + real AWS (primary); primary metrics + TCP stress test; **cost/latency** (`14`); scenario-level + per-category stats with bootstrap CIs + Holm-Bonferroni over the **2 primary tests** (`08`). | Shared | **[~Wk 9–12]** |
-| **P5 · Analysis + Write-up** | Failure-mode analysis + paper | **Failure-mode analysis** (`13`); Abstract/System/Results/Failure/Limitations (Atishay); Intro/Related-Work/Discussion/Conclusion (Anna); release CloudKC-Bench + **DOI**; reproducibility README (real-AWS + LocalStack). | Split | **[~Wk 12–16]** |
+| **P4 · Core Experiment** | Run everything; measure | Multi-seed runs on LocalStack (repro) + real AWS (primary); primary metrics + TCP stress test; **cost/latency** (`14`); scenario-level + per-category stats with bootstrap CIs + Holm-Bonferroni over the **2 primary tests** (`08`). | Shared | stats/analysis **DONE** ✅; multi-seed runs ▶️ in progress (qwen2.5:7b) |
+| **P5 · Analysis + Write-up** | Failure-mode analysis + paper | **Failure-mode analysis** (`13`); Abstract/System/Results/Failure/Limitations (Atishay); Intro/Related-Work/Discussion/Conclusion (Anna); release CloudKC-Bench + **DOI**; reproducibility README (real-AWS + LocalStack). | Split | paper scaffolded ▶️ (`paper/`); failure analysis **DONE** ✅ |
 | **STRETCH** | Extended real-AWS coverage | If on schedule, expand real-AWS runs from subset to full set. | Shared | conditional |
 
 ## Critical dependencies (do these in order)
@@ -63,7 +63,7 @@ C4 failure-mode taxonomy · C5 reproducibility artifact. (Details: `CloudSentine
 12. All citations traced to locatable sources.
 
 ## Supervisor decisions blocking P2 (`docs/week1/07`)
-Venue (§8) · **real-AWS budget (§9)** · LLMCloudHunter scope partial/full (§10) · journal-scope sign-off (§11).
+Venue (§8) · **real-AWS budget (§9)** · journal-scope sign-off (§11). (GuardDuty/LLMCloudHunter dropped — `11`.)
 
 ## Honest standing limitations (state in paper — v3 §15)
 Synthetic-scenario ceiling · single-group validation · LLM temporal drift · **category-level statistical

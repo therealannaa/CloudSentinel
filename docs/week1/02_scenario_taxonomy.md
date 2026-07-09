@@ -44,9 +44,9 @@ produces real logs; P1 fixes the *set*, *categories*, *TTP grounding*, and *stag
 
 ## 3. TTP grounding & technique set
 
-TTP IDs are grounded in the 19 techniques curated in `tools/mitre_lookup.py` wherever possible. Sub-techniques
-to **add in P2**: `T1098.001` (Additional Cloud Credentials), `T1548.005` (Temporary Elevated Cloud Access),
-`T1562.008` (Disable Cloud Logs — repo has parent `T1562.001`).
+TTP IDs are grounded in the techniques curated in `tools/mitre_lookup.py`. The three sub-techniques flagged at
+freeze — `T1098.001` (Additional Cloud Credentials), `T1548.005` (Temporary Elevated Cloud Access),
+`T1562.008` (Disable Cloud Logs) — have since been **added** to `tools/mitre_lookup.py` (now 22 techniques).
 
 ---
 

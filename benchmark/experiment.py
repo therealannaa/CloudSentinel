@@ -116,6 +116,11 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
                     prefilter_events_in=res.prefilter_events_in,
                     prefilter_events_out=res.prefilter_events_out)
                 _write_reconstruction(conn, run_id, res.reconstructed)
+                # capture the arm's raw proposals (what technique it assigned to each
+                # event) for provenance + technique-attribution failure analysis
+                state_cache.insert_agent_output(conn, run_id, code, json.dumps(
+                    [{"event_id": c.event_id, "ttp_id": c.ttp_id,
+                      "source": c.telemetry_source} for c in res.candidates]))
                 state_cache.insert_score(conn, run_id, sc)
                 results.append({
                     "run_id": run_id, "arm": code, "scenario_id": sid,

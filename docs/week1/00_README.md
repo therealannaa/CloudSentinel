@@ -7,14 +7,20 @@ Multi-Stage Kill-Chain Reconstruction
 
 > **v3 (journal) — changed from v2:** This package was upgraded from the workshop-tier v2 plan to the
 > journal-tier v3 plan (`CloudSentinel_Journal_Plan_v3.md`). Scenario count 24 → **~70**; LocalStack → **real
-> AWS primary** (LocalStack as reproducibility layer); GuardDuty-only stretch → **3 external baselines**; plus
+> AWS primary** (LocalStack as reproducibility layer); GuardDuty-only stretch → **external baselines** (later reduced to community Sigma only — `11`); plus
 > new journal-required artifacts: **formal power analysis, coverage-gap table, structured literature review,
 > failure-mode analysis, cost/latency as first-class results, inter-rater check.** v2 history is preserved in
 > git. The folder name `week1/` is kept (it is now the **P1 design-freeze package**, not a single calendar week).
 
 ---
 
-## What Phase P1 is (and why there is still no experiment code)
+> **Implementation status (this folder is the frozen P1 design freeze).** P2–P4 are now **built and tested**
+> — the `benchmark/` package (simulator, arms A1–A4 + SIGMA, stats, failure analysis), see the top-level
+> [`../../README.md`](../../README.md) and [`../RESEARCH_PLAN_v3.md`](../RESEARCH_PLAN_v3.md) for current
+> status. The "no experiment code" rule below describes the **P1 phase** (now satisfied); it is not a
+> statement about the repo today.
+
+## What Phase P1 is (and why there was no experiment code during the freeze)
 
 The project's primary deliverable is a **journal-grade research benchmark**, not just a working system. The
 dominant reason security-ML papers are rejected is that measurement decisions were made *after* seeing
@@ -48,7 +54,7 @@ scaffolding**; these freeze docs are the authoritative spec it must conform to.
 | 8 | [08_power_analysis.md](08_power_analysis.md) + [power_analysis.py](power_analysis.py) — **NEW** | **Atishay** | 🔒 |
 | 9 | [09_coverage_gap_table.md](09_coverage_gap_table.md) — **NEW** (C1 novelty) | Anna | — |
 | 10 | [10_real_aws_setup.md](10_real_aws_setup.md) — **NEW** (budget-gated) | shared | — |
-| 11 | [11_external_baselines.md](11_external_baselines.md) — **NEW** (3 baselines) | Anna | — |
+| 11 | [11_external_baselines.md](11_external_baselines.md) — **NEW** (SIGMA baseline; GD/LCH dropped) | Anna | — |
 | 12 | [12_literature_review.md](12_literature_review.md) — **NEW** (25–30 papers) | Anna | — |
 | 13 | [13_failure_mode_analysis_plan.md](13_failure_mode_analysis_plan.md) — **NEW** (C4, run in P4/P5) | shared | — |
 | 14 | [14_cost_latency_plan.md](14_cost_latency_plan.md) — **NEW** (C3 results) | Atishay | — |
@@ -71,7 +77,7 @@ scaffolding**; these freeze docs are the authoritative spec it must conform to.
 - [ ] **Coverage-gap table** structure in place; competitor cells flagged "read the paper" (`09`).
 - [ ] External-baselines spec merged (`11`); literature-review skeleton merged (`12`).
 - [ ] Real-AWS setup + **budget estimate** drafted for supervisor sign-off (`10`).
-- [ ] Sync checkpoint held; venue / budget / LLMCloudHunter-scope decisions logged (`07`).
+- [ ] Sync checkpoint held; venue / budget decisions logged (`07`).
 
 The full 12-item *paper-submittable* DoD lives in [../RESEARCH_PLAN_v3.md](../RESEARCH_PLAN_v3.md) (§13).
 

@@ -14,7 +14,7 @@
 | Metric | Source (`05` columns) | Notes |
 |--------|-----------------------|-------|
 | **Filtering ratio per category** | `runs.prefilter_events_in` / `prefilter_events_out` | % of raw events surviving the deterministic pre-filter, per category. A3 (no pre-filter) is the 100% reference. |
-| **Cost per scenario per arm** | `runs.token_cost` | Gemini API call count + estimated token cost for A1/A2/A3 and `LCH`. A4/`GD`/`SIGMA` ≈ 0 LLM cost by design. |
+| **Cost per scenario per arm** | `runs.token_cost` | token/API cost for the LLM arms A1/A2/A3. A4/`SIGMA` ≈ 0 LLM cost by design (no LLM). |
 | **Latency distribution per arm** | `runs.latency_ms` | Wall-clock ingest→chain-output; report **mean + p95**, per arm, per category. |
 | **Cost-vs-accuracy tradeoff** | join `scores.f1`/`recall` with `runs.token_cost` | The efficiency frontier across A1/A2/A3. |
 

@@ -1,0 +1,87 @@
+<svg viewBox="0 0 980 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="Helvetica,Arial,sans-serif">
+<title id="t">CloudKC-Bench arms pipeline</title>
+<desc id="d">Shared AWS telemetry is captured into a state cache, routed through five ablation arms (A1 multi-agent LLM, A2 single agent, A3 single agent on raw logs, A4 rules-only, SIGMA community rules), each producing a reconstructed kill chain scored by one mechanical matching function against the ground-truth manifest under two lenses.</desc>
+<style>
+text{fill:#1f2937}
+.h{font-weight:700}.s{font-size:11px;fill:#475569}.lbl{font-size:12px}
+.box{fill:#f1f5f9;stroke:#cbd5e1;stroke-width:1.2}
+.llm{fill:#e0e7ff;stroke:#6366f1;stroke-width:1.2}
+.rule{fill:#dcfce7;stroke:#16a34a;stroke-width:1.2}
+.gt{fill:#fef3c7;stroke:#d97706;stroke-width:1.2}
+.edge{stroke:#94a3b8;stroke-width:1.6;fill:none}
+</style>
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+
+<text x="490" y="20" text-anchor="middle" class="h" font-size="15">AWS telemetry (per scenario)</text>
+<g font-size="12" text-anchor="middle">
+<rect x="120" y="30" width="160" height="34" rx="8" class="box"/><text x="200" y="51">CloudTrail</text>
+<rect x="300" y="30" width="150" height="34" rx="8" class="box"/><text x="375" y="51">VPC Flow</text>
+<rect x="470" y="30" width="150" height="34" rx="8" class="box"/><text x="545" y="51">S3 access</text>
+<rect x="640" y="30" width="150" height="34" rx="8" class="box"/><text x="715" y="51">EC2 lifecycle</text>
+</g>
+<path class="edge" d="M455,64 L455,80" marker-end="url(#a)"/>
+<rect x="150" y="82" width="680" height="46" rx="8" class="box"/>
+<text x="490" y="101" text-anchor="middle" class="h" font-size="13">SQLite event cache</text>
+<text x="490" y="118" text-anchor="middle" class="s">arms see event_id · source · time · raw_json  —  ground-truth label withheld</text>
+
+<g text-anchor="middle" font-size="11">
+<rect x="18" y="154" width="176" height="40" rx="8" class="llm"/><text x="106" y="172" class="h" font-size="12">A1 · Multi-agent</text><text x="106" y="186" class="s">pre-filter + hunters</text>
+<rect x="34" y="208" width="144" height="28" rx="7" class="box"/><text x="106" y="226">Pre-filter</text>
+<rect x="34" y="244" width="144" height="28" rx="7" class="llm"/><text x="106" y="262">4 domain hunters (LLM)</text>
+<rect x="34" y="280" width="144" height="28" rx="7" class="llm"/><text x="106" y="298">Coordinator</text>
+<rect x="206" y="154" width="164" height="40" rx="8" class="llm"/><text x="288" y="172" class="h" font-size="12">A2 · Single</text><text x="288" y="186" class="s">pre-filter + 1 agent</text>
+<rect x="216" y="208" width="144" height="28" rx="7" class="box"/><text x="288" y="226">Pre-filter</text>
+<rect x="216" y="244" width="144" height="28" rx="7" class="llm"/><text x="288" y="262">Single agent (LLM)</text>
+<rect x="382" y="154" width="164" height="40" rx="8" class="llm"/><text x="464" y="172" class="h" font-size="12">A3 · Raw</text><text x="464" y="186" class="s">no pre-filter</text>
+<rect x="392" y="208" width="144" height="28" rx="7" class="box" stroke-dasharray="4 3"/><text x="464" y="226" class="s">(no pre-filter)</text>
+<rect x="392" y="244" width="144" height="28" rx="7" class="llm"/><text x="464" y="262">Single agent (LLM)</text>
+<rect x="558" y="154" width="164" height="40" rx="8" class="rule"/><text x="640" y="172" class="h" font-size="12">A4 · Rules</text><text x="640" y="186" class="s">no LLM</text>
+<rect x="568" y="208" width="144" height="28" rx="7" class="box"/><text x="640" y="226">Pre-filter</text>
+<rect x="568" y="244" width="144" height="28" rx="7" class="rule"/><text x="640" y="262">Signature rules</text>
+<rect x="734" y="154" width="164" height="40" rx="8" class="rule"/><text x="816" y="172" class="h" font-size="12">SIGMA · baseline</text><text x="816" y="186" class="s">community rules</text>
+<rect x="744" y="244" width="144" height="28" rx="7" class="rule"/><text x="816" y="262">Sigma CloudTrail/S3</text>
+</g>
+
+<g class="edge">
+<path d="M300,128 C240,138 150,140 106,152" marker-end="url(#a)"/>
+<path d="M400,128 C360,138 320,142 288,152" marker-end="url(#a)"/>
+<path d="M490,130 L464,152" marker-end="url(#a)"/>
+<path d="M580,128 C610,140 630,142 640,152" marker-end="url(#a)"/>
+<path d="M680,128 C740,138 800,142 816,152" marker-end="url(#a)"/>
+</g>
+
+<g class="edge">
+<path d="M106,308 L106,344 L470,344"/>
+<path d="M288,272 L288,344"/>
+<path d="M464,272 L464,344"/>
+<path d="M640,272 L640,344 L510,344"/>
+<path d="M816,272 L816,344 L510,344"/>
+<path d="M490,344 L490,372" marker-end="url(#a)"/>
+</g>
+<text x="200" y="338" text-anchor="middle" class="s">each arm → reconstructed kill chain (shared schema)</text>
+
+<rect x="250" y="374" width="480" height="44" rx="8" class="box"/>
+<text x="490" y="393" text-anchor="middle" class="h" font-size="13">Mechanical matching function</text>
+<text x="490" y="409" text-anchor="middle" class="s">exact / deterministic · no human or LLM judge</text>
+<rect x="756" y="374" width="188" height="44" rx="8" class="gt"/>
+<text x="850" y="393" text-anchor="middle" class="h" font-size="12">Ground-truth manifest</text>
+<text x="850" y="409" text-anchor="middle" class="s">stages · TTPs · evidence</text>
+<path class="edge" d="M756,396 L732,396" marker-end="url(#a)"/>
+
+<path class="edge" d="M490,418 L490,432 L315,432 L315,444" marker-end="url(#a)"/>
+<path class="edge" d="M490,432 L665,432 L665,444" marker-end="url(#a)"/>
+<rect x="150" y="446" width="330" height="60" rx="8" class="box"/>
+<text x="315" y="468" text-anchor="middle" class="h" font-size="13">Technique-level score</text>
+<text x="315" y="485" text-anchor="middle" class="s">exact / parent TTP + source + evidence</text>
+<text x="315" y="499" text-anchor="middle" class="s">→ H1, H2</text>
+<rect x="500" y="446" width="330" height="60" rx="8" class="box"/>
+<text x="665" y="468" text-anchor="middle" class="h" font-size="13">Event-level score</text>
+<text x="665" y="485" text-anchor="middle" class="s">technique-agnostic: found the attack events?</text>
+<text x="665" y="499" text-anchor="middle" class="s">→ detection · confusion</text>
+
+<g font-size="11" text-anchor="start">
+<rect x="150" y="528" width="14" height="14" rx="3" class="llm"/><text x="170" y="539">LLM-based (A1–A3)</text>
+<rect x="320" y="528" width="14" height="14" rx="3" class="rule"/><text x="340" y="539">rules, no LLM (A4, SIGMA)</text>
+<rect x="540" y="528" width="14" height="14" rx="3" class="gt"/><text x="560" y="539">ground truth (scoring only)</text>
+</g>
+</svg>

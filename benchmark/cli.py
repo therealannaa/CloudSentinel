@@ -222,6 +222,27 @@ def cmd_tcp_robustness(args):
     return 0
 
 
+def cmd_confusion(args):
+    from benchmark import failure_analysis
+    rows = failure_analysis.technique_confusion(args.db, environment=args.environment, arm=args.arm)
+    if not rows:
+        print("no agent_outputs found — re-run `run-arms` with this version (older runs "
+              "didn't capture raw LLM proposals).")
+        return 1
+    print("\n=== Technique-attribution confusion (per true technique, what did the arm assign?) ===\n")
+    print(f"{'arm':<6}{'true_ttp':<12}{'n':>5}{'exact':>8}{'parent':>8}{'missed':>8}  top wrong assignments")
+    for r in rows:
+        wrong = ", ".join(f"{k}×{c}" for k, c in r["top_wrong"]) or "-"
+        print(f"{r['arm']:<6}{r['true_ttp']:<12}{r['n']:>5}{r['exact_pct']:>8.0%}"
+              f"{r['parent_pct']:>8.0%}{r['not_detected_pct']:>8.0%}  {wrong}")
+    if args.csv:
+        # flatten top_wrong for CSV
+        from benchmark import stats
+        stats.to_csv([{**r, "top_wrong": str(r["top_wrong"])} for r in rows], args.csv)
+        print(f"\nWrote -> {args.csv}")
+    return 0
+
+
 def cmd_localstack_check(args):
     from benchmark.simulator import localstack_backend as lsb
     try:
@@ -279,6 +300,12 @@ def build_parser():
     de.add_argument("--environment", default=None)
     de.add_argument("--csv", default=None)
     de.set_defaults(func=cmd_detection)
+
+    cf = sub.add_parser("confusion", help="technique-attribution confusion: true vs assigned technique per event")
+    cf.add_argument("--arm", default=None, help="restrict to one arm (e.g. A1)")
+    cf.add_argument("--environment", default=None)
+    cf.add_argument("--csv", default=None)
+    cf.set_defaults(func=cmd_confusion)
 
     fa = sub.add_parser("failures", help="C4 failure-mode analysis (per-technique misses, FPs) from a past run")
     fa.add_argument("--environment", default=None)
