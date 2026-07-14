@@ -23,11 +23,15 @@ from benchmark.arms import ARMS
 
 def cmd_generate(args):
     res = runner.generate(scenario_set=args.set, db_path=args.db,
-                          manifests_dir=args.manifests, environment=args.environment)
-    n_ev = sum(r["events"] for r in res.values())
-    n_gt = sum(r["ground_truth"] for r in res.values())
-    print(f"Generated {len(res)} scenarios (set={args.set}, env={args.environment}): "
-          f"{n_ev} events ({n_gt} ground-truth). Manifests -> {args.manifests}/")
+                          manifests_dir=args.manifests, environment=args.environment,
+                          resume=args.resume)
+    n_ev = sum(r.get("events", 0) for r in res.values())
+    n_gt = sum(r.get("ground_truth", 0) for r in res.values())
+    n_skip = sum(1 for r in res.values() if r.get("skipped"))
+    print(f"Generated {len(res) - n_skip} scenarios (set={args.set}, env={args.environment}): "
+          f"{n_ev} events ({n_gt} ground-truth)"
+          + (f"; {n_skip} skipped (already captured)" if n_skip else "")
+          + f". Manifests -> {args.manifests}/")
     print("All manifests validated against manifest.schema.json.")
     return 0
 
@@ -128,7 +132,7 @@ def cmd_run_arms(args):
         results = experiment.run_experiment(
             arms=arms, scenario_set=args.set, seeds=args.seeds, db_path=args.db,
             manifests_dir=args.manifests, environment=args.environment,
-            limit=args.limit, category=args.category)
+            limit=args.limit, category=args.category, resume=args.resume)
     except LLMError as e:
         print(f"\nLLM backend error — aborted before writing misleading scores:\n{e}")
         return 2
@@ -265,6 +269,8 @@ def build_parser():
     g.add_argument("--manifests", default="benchmark/manifests")
     g.add_argument("--environment", default="synthetic",
                    choices=["synthetic", "localstack", "real_aws"])
+    g.add_argument("--resume", action="store_true",
+                   help="skip scenarios already captured in the DB (resume a crashed real-AWS capture)")
     g.set_defaults(func=cmd_generate)
 
     s = sub.add_parser("summary", help="per-category scenario/event counts")
@@ -326,6 +332,9 @@ def build_parser():
                     help="run only one category (e.g. multi_stage_kill_chain for the H1/H2 primary test)")
     ra.add_argument("--limit", type=int, default=None,
                     help="run only the first N scenarios by id (NOTE: BN-* sort first -> use --category instead for a representative slice)")
+    ra.add_argument("--resume", action="store_true",
+                    help="skip (arm,scenario,seed) already scored + scenarios already captured "
+                         "-> restart a crashed long/real-AWS run without redoing completed work")
     ra.add_argument("--csv", default=None)
     ra.set_defaults(func=cmd_run_arms)
 

@@ -20,6 +20,19 @@
 \newcommand{\cmark}{\ensuremath{\checkmark}}
 \newcommand{\xmark}{\ensuremath{\times}}
 
+% Self-healing figure: drop in the generated PDF if it exists, else a labelled
+% placeholder box so the draft always compiles. The moment the PDF lands in
+% paper/figures/ the real figure appears with no LaTeX edits. Data figures are
+% produced by `python -m benchmark.plots` (see benchmark/plots.py).
+\newcommand{\autofig}[2]{%
+  \IfFileExists{#1}{\includegraphics[width=\linewidth]{#1}}{%
+    \setlength{\fboxsep}{10pt}%
+    \fbox{\parbox[c][3cm][c]{0.88\linewidth}{\centering
+      \textcolor{red}{\textbf{[FIGURE PLACEHOLDER]}}\\[3pt]
+      \texttt{\small\detokenize{#1}}\\[5pt]  % detokenize: underscores in filenames stay literal
+      \footnotesize\itshape #2}}}%
+}
+
 \begin{document}
 
 \title{CloudKC-Bench: An Open Benchmark and Controlled Study of LLM
@@ -227,6 +240,8 @@ documents delivery lag/skew so temporal claims are defensible.
 % =====================================================================
 \section{System Architecture}\label{sec:system}
 % Owner: Atishay. The architecture is the instrument, not the contribution.
+Figure~\ref{fig:pipeline} shows the reference pipeline (arm A1) and where the ablation
+arms diverge from it.
 Telemetry is normalised into a SQLite state cache. A deterministic, instrumented
 pre-filter reduces event volume before any LLM call, recording events-in/out and
 pre-filter recall. The full system (arm A1) distributes filtered events to four domain
@@ -235,6 +250,18 @@ into an ordered chain. All arms emit the identical reconstructed-chain schema, s
 comparison is not confounded by output format. The LLM backend is pluggable---a
 deterministic offline backend for reproducible pipeline tests, a local Ollama model, or a
 hosted API (Gemini/OpenAI-compatible)---and is pinned per experiment.
+
+\begin{figure}[t]
+\centering
+% arms_pipeline.svg exists in paper/figures/; export it to PDF for pdflatex
+% (Overleaf: right-click the .svg -> "compile as PDF", or use inkscape/rsvg-convert).
+\autofig{figures/arms_pipeline.pdf}{Export paper/figures/arms\_pipeline.svg to PDF.}
+\caption{CloudKC-Bench arm pipeline. Normalised telemetry $\rightarrow$ deterministic
+pre-filter $\rightarrow$ (A1) four domain hunters + coordinator. A2 replaces the hunters
+with a single agent; A3 removes the pre-filter; A4 replaces the LLM with deterministic
+rules. All arms emit the identical reconstructed-chain schema.}
+\label{fig:pipeline}
+\end{figure}
 
 % =====================================================================
 \section{Experimental Setup}\label{sec:setup}
@@ -302,7 +329,7 @@ real telemetry; add a second, larger model.}
 We report reconstruction under two lenses (Section~\ref{sec:bench}): \emph{technique-level} (a stage is
 correct only if the ATT\&CK technique, telemetry source, and cited evidence all match) and \emph{event-level}
 (technique-agnostic: did the arm cite the ground-truth attack \emph{events} at all?). Table~\ref{tab:twolens}
-shows they tell very different stories.
+and Fig.~\ref{fig:twolens} show they tell very different stories.
 
 \begin{table}[t]
 \caption{Multi-stage kill chains: two scoring lenses (qwen2.5:7b, synthetic, $n{=}15$, 3 seeds).
@@ -328,10 +355,32 @@ sub-technique each scenario uses; the LLM, even given the closed technique vocab
 credit, rarely names the exact technique. The bottleneck is \textbf{technique attribution, not cross-domain
 event detection}.
 
+\begin{figure}[t]
+\centering
+\autofig{figures/two_lens.pdf}{Generate: \texttt{benchmark.plots --results <run>.csv
+--detection <det>.csv --category multi\_stage\_kill\_chain}.}
+\caption{The two-lens gap on multi-stage kill chains: per arm, technique-level recall
+(strict) vs event-level recall (technique-agnostic). The LLM arms (A1--A3) find the
+attack events but rarely name the exact technique; A4 rules do both because their
+signatures encode the answer key. \todo{regenerate from the final 32b / real-AWS run.}}
+\label{fig:twolens}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\autofig{figures/recall_by_category.pdf}{Generate: \texttt{benchmark.plots --results <run>.csv}.}
+\caption{Technique-level recall by arm across the five categories (qwen2.5:32b,
+synthetic). A4 rules dominate the strict metric everywhere; the LLM arms are low
+across the board, consistent with the attribution bottleneck.
+\todo{swap in real-AWS results as the headline once available.}}
+\label{fig:recallcat}
+\end{figure}
+
 \subsection{Primary hypotheses}
 \textbf{H1 (LLM vs rules, technique-level recall):} the best LLM arm (A1) trails A4 by a mean of $-0.874$
 (95\% CI $[-0.959,-0.767]$, Cohen's $d_z=-4.39$, permutation $p<0.001$, Holm-corrected). H1 is
 \textbf{not supported} --- and, on the strict technique-level metric, the LLM is significantly \emph{worse}.
+The same ranking holds across all five categories (Fig.~\ref{fig:recallcat}).
 \textbf{H2 (multi-agent vs single, F1):} A1 vs A2 differ by $+0.027$ (95\% CI $[-0.004,0.062]$, $d_z=0.42$,
 $p=0.19$): we \textbf{fail to reject} H2 --- multi-agent decomposition adds no measurable value, while costing
 $\sim$40\% more tokens (1540 vs 1110).
@@ -341,14 +390,35 @@ The deterministic pre-filter keeps $\sim$82\% of events on multi-stage (filterin
 unfiltered at $1.0$). It reduces LLM token cost (A2 $1110$ vs A3 $1291$, $\approx$14\%) --- but at an
 event-recall cost: \emph{A3 (no pre-filter) detects more attack events than A2} ($0.732$ vs $0.641$). Thus the
 pre-filter is a genuine cost-vs-recall trade-off, and for a capable reader model it discards real detections.
-A4 (rules) and SIGMA incur zero LLM cost. \todo{cost--accuracy frontier figure once all categories are run.}
+A4 (rules) and SIGMA incur zero LLM cost (Fig.~\ref{fig:costacc}).
+
+\begin{figure}[t]
+\centering
+\autofig{figures/cost_accuracy.pdf}{Generate: \texttt{benchmark.plots --results <run>.csv
+--category multi\_stage\_kill\_chain}.}
+\caption{Cost--accuracy trade-off on multi-stage kill chains: tokens per scenario vs
+technique-level recall, per arm (qwen2.5:32b, synthetic). A4/SIGMA sit at zero token
+cost; the LLM arms pay tokens without a technique-level return on this metric.
+\todo{regenerate from the final run; add the event-level panel.}}
+\label{fig:costacc}
+\end{figure}
 
 % =====================================================================
 \section{Failure-Mode Analysis}\label{sec:failure}
 % Owner: Atishay.
 \textbf{Technique attribution is the dominant LLM failure.} Because event-level precision is $\geq 0.94$ while
 technique-level recall is $\sim$0.04, almost every event the LLM flags \emph{is} an attack event, but the
-attached ATT\&CK id is usually wrong. Before the technique vocabulary was supplied, the model labelled events
+attached ATT\&CK id is usually wrong (Fig.~\ref{fig:confusion}).
+
+\begin{figure}[t]
+\centering
+\autofig{figures/confusion_A1.pdf}{Generate: \texttt{benchmark.plots --confusion <conf>.csv --arm A1}
+(needs \texttt{benchmark.cli confusion --csv} from the run DB).}
+\caption{Where technique attribution breaks (arm A1): per ground-truth technique, the
+fraction the LLM labels exactly, with parent-only credit, with the wrong technique, or
+misses entirely. \todo{generate from the 32b run DB once uploaded.}}
+\label{fig:confusion}
+\end{figure} Before the technique vocabulary was supplied, the model labelled events
 with techniques outside the benchmark entirely (e.g., T1569, T1222); constraining the label space fixed the
 out-of-vocabulary errors but not the within-vocabulary confusions.
 

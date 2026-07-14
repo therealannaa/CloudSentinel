@@ -24,9 +24,16 @@ def per_category(results):
     # 1. average seeds -> one value per (arm, scenario)
     by_scen = defaultdict(lambda: defaultdict(list))
     cat_of = {}
+    # provenance (model_version / environment) is constant per run set; carry it so the
+    # exported CSV is self-describing and can't be mistaken for another model/env's run
+    provenance = {}
     for r in results:
         key = (r["arm"], r["scenario_id"])
         cat_of[r["scenario_id"]] = r["category"]
+        if "model_version" in r:
+            provenance["model_version"] = r["model_version"]
+        if "environment" in r:
+            provenance["environment"] = r["environment"]
         for m in ("recall", "precision", "f1", "token_cost", "latency_ms",
                   "prefilter_in", "prefilter_out", "prefilter_recall"):
             by_scen[key][m].append(r[m])
@@ -42,6 +49,8 @@ def per_category(results):
     rows = []
     for (arm, cat), metrics in sorted(by_cat.items()):
         row = {"arm": arm, "category": cat,
+               "model_version": provenance.get("model_version", ""),
+               "environment": provenance.get("environment", ""),
                "n_scenarios": len(metrics["recall"])}
         for m, vals in metrics.items():
             row[m] = _mean(vals)
@@ -53,7 +62,8 @@ def per_category(results):
 
 
 def print_table(rows):
-    cols = ["arm", "category", "n_scenarios", "recall", "precision", "f1",
+    cols = ["arm", "category", "model_version", "environment", "n_scenarios",
+            "recall", "precision", "f1",
             "filtering_ratio", "prefilter_recall", "token_cost", "latency_ms"]
     print("  ".join(c[:14].ljust(14) for c in cols))
     for r in rows:

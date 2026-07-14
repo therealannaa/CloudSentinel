@@ -40,6 +40,35 @@ class TestRunExperiment:
         assert all(r["token_cost"] == 0 for r in a4)
         assert sum(r["token_cost"] for r in a2) > 0
 
+    def test_resume_skips_completed_runs(self, generated):
+        db, manifests = generated
+        # first pass: A4 on multi-stage, 1 seed
+        first = experiment.run_experiment(
+            arms=("A4",), scenario_set="dev", seeds=1, category="multi_stage_kill_chain",
+            db_path=db, manifests_dir=manifests, auto_generate=False)
+        assert not any(r.get("resumed") for r in first)
+        # second pass with resume: everything already scored -> all skipped/reloaded
+        second = experiment.run_experiment(
+            arms=("A4",), scenario_set="dev", seeds=1, category="multi_stage_kill_chain",
+            db_path=db, manifests_dir=manifests, auto_generate=False, resume=True)
+        assert len(second) == 15 and all(r.get("resumed") for r in second)
+        # scores identical to the first pass (nothing re-run)
+        r1 = {r["run_id"]: r["recall"] for r in first}
+        assert all(abs(r["recall"] - r1[r["run_id"]]) < 1e-9 for r in second)
+
+    def test_resume_runs_only_missing_seed(self, generated):
+        db, manifests = generated
+        experiment.run_experiment(arms=("A4",), scenario_set="dev", seeds=1,
+                                  category="multi_stage_kill_chain", db_path=db,
+                                  manifests_dir=manifests, auto_generate=False)
+        # now ask for 2 seeds with resume: seed 0 exists -> reloaded; seed 1 -> fresh
+        res = experiment.run_experiment(
+            arms=("A4",), scenario_set="dev", seeds=2, category="multi_stage_kill_chain",
+            db_path=db, manifests_dir=manifests, auto_generate=False, resume=True)
+        resumed = [r for r in res if r.get("resumed")]
+        fresh = [r for r in res if not r.get("resumed")]
+        assert len(resumed) == 15 and len(fresh) == 15   # seed0 reloaded, seed1 new
+
     def test_category_filter_runs_only_that_category(self, generated):
         db, manifests = generated
         results = experiment.run_experiment(
