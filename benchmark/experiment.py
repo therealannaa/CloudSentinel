@@ -50,11 +50,15 @@ def _write_reconstruction(conn, run_id, chain):
 def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
                    db_path="cloudsentinel.db", manifests_dir="benchmark/manifests",
                    environment="synthetic", model_version=None, auto_generate=True,
-                   limit=None, category=None):
+                   limit=None, category=None, resume=False):
     """Run the ablation. Returns a list of per-run result dicts.
 
     If the scenario set hasn't been generated into the cache yet, generates it
     first (auto_generate). The shared LLM client is created once and reused.
+
+    `resume=True` skips (arm, scenario, seed) combinations already scored in the DB,
+    so a crashed multi-hour run can be restarted without redoing completed work
+    (LLM/AWS calls are the expensive part). Commits after every run.
     """
     conn = state_cache.connect(db_path)
     have = conn.execute("SELECT COUNT(*) FROM scenarios").fetchone()[0] if \
@@ -62,7 +66,8 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
     if auto_generate and not have:
         conn.close()
         gen_runner.generate(scenario_set if scenario_set != "all" else "all",
-                            db_path=db_path, manifests_dir=manifests_dir, environment=environment)
+                            db_path=db_path, manifests_dir=manifests_dir,
+                            environment=environment, resume=resume)
         conn = state_cache.connect(db_path)
 
     client = get_client()
@@ -106,9 +111,22 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
         for code in arms:
             arm = arm_objs[code]
             for seed in range(seeds):
+                run_id = f"{code}-{sid}-{seed}-{environment}"
+                if resume and conn.execute(
+                        "SELECT 1 FROM scores WHERE run_id=?", (run_id,)).fetchone():
+                    row = conn.execute(
+                        "SELECT recall, precision, f1, tp, fp, fn FROM scores WHERE run_id=?",
+                        (run_id,)).fetchone()
+                    results.append({"run_id": run_id, "arm": code, "scenario_id": sid,
+                                    "category": sr["category"], "seed": seed,
+                                    "model_version": model_version, "environment": environment,
+                                    **{k: row[k] for k in ("recall", "precision", "f1", "tp", "fp", "fn")},
+                                    "token_cost": 0, "latency_ms": 0, "prefilter_in": 0,
+                                    "prefilter_out": 0, "prefilter_recall": round(pf_recall, 4),
+                                    "resumed": True})
+                    continue
                 res = arm.run(events, seed=seed)
                 sc = matching.score(res.reconstructed, manifest)
-                run_id = f"{code}-{sid}-{seed}-{environment}"
                 state_cache.insert_run(
                     conn, run_id, code, environment, sid, seed,
                     model_version=model_version, latency_ms=res.latency_ms,
@@ -125,6 +143,7 @@ def run_experiment(arms=ARMS, scenario_set="dev", seeds=3,
                 results.append({
                     "run_id": run_id, "arm": code, "scenario_id": sid,
                     "category": sr["category"], "seed": seed,
+                    "model_version": model_version, "environment": environment,
                     "recall": sc.recall, "precision": sc.precision, "f1": sc.f1,
                     "tp": sc.tp, "fp": sc.fp, "fn": sc.fn,
                     "token_cost": res.token_cost, "latency_ms": res.latency_ms,

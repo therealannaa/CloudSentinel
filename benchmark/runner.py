@@ -19,11 +19,14 @@ def _ids_for(scenario_set):
 
 def generate(scenario_set="dev", db_path="cloudsentinel.db",
              manifests_dir="benchmark/manifests", environment="synthetic",
-             author="Atishay"):
+             author="Atishay", resume=False):
     """Generate one scenario set end-to-end.
 
     Returns a summary dict: per scenario the #events, #ground-truth events, and
     manifest validation result. Raises if any manifest is invalid.
+
+    `resume=True` skips scenarios already captured in the DB — essential for the
+    real-AWS backend, where re-running would re-hit the API for hours.
     """
     os.makedirs(manifests_dir, exist_ok=True)
     conn = state_cache.init_state_cache(db_path)
@@ -43,6 +46,9 @@ def generate(scenario_set="dev", db_path="cloudsentinel.db",
     results = {}
     for sid in _ids_for(scenario_set):
         spec = SCENARIO_SPECS[sid]
+        if resume and state_cache.event_count(conn, sid) > 0:
+            results[sid] = {"skipped": True, "events": state_cache.event_count(conn, sid)}
+            continue
         if aws_env:
             from benchmark.simulator import localstack_backend as lsb
             events, manifest = lsb.run_scenario_localstack(
