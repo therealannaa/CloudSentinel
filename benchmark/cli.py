@@ -147,9 +147,11 @@ def cmd_run_arms(args):
     from benchmark.arms.llm_client import get_client
     backend = get_client().name
     print(f"\nLLM backend: {backend}"
-          + ("" if backend == "gemini" else
-             "  (deterministic offline backend — set GEMINI_API_KEY for real LLM arms; "
-             "comparative H1/H2 numbers are only meaningful with a real LLM + real telemetry)"))
+          + ("  (deterministic offline backend — no real LLM; set LLM_BASE_URL for "
+             "Ollama/OpenAI-compat or GEMINI_API_KEY for Gemini. Comparative H1/H2 "
+             "numbers are only meaningful with a real LLM + real telemetry.)"
+             if backend == "deterministic" else
+             "  (real LLM backend — scores reflect actual model output)"))
     return 0
 
 

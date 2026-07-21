@@ -63,12 +63,11 @@ four-arm ablation (multi-agent LLM, single-agent LLM, single agent without a
 pre-filter, and a deterministic rules-only correlator) plus an independent community
 Sigma-rules baseline, holding model, telemetry, and compute fixed across arms.
 We report standard detection metrics per scenario category with bootstrap confidence
-intervals and effect sizes, and resolve two pre-registered hypotheses. In a preliminary
-run (qwen2.5:7b, multi-stage category), the LLM performs cross-domain attack-\emph{event}
-detection competitively and at higher precision than the rules ($\geq 0.94$ vs $0.73$),
-but is markedly worse at exact ATT\&CK-\emph{technique} attribution; multi-agent
-decomposition adds no measurable value over a single agent.
-\todo{finalise abstract numbers after the full-category + real-telemetry runs.}
+intervals and effect sizes, and resolve two pre-registered hypotheses. On a real-AWS run
+(qwen2.5:32b), the LLM performs cross-domain attack-\emph{event} detection at higher
+precision than the rules (up to $1.00$ vs $0.65$ on multi-stage kill chains), but is
+markedly worse at exact ATT\&CK-\emph{technique} attribution (recall $\sim$0.12 vs
+$0.87$); multi-agent decomposition adds no measurable value over a single agent.
 We further quantify the cost/latency of the deterministic pre-filter and give a
 failure-mode taxonomy showing when and why reconstruction fails. All artifacts---the
 generator, manifests, schema, matching function, and analysis scripts---are released
@@ -195,7 +194,7 @@ Multi-stage kill chains         & \xmark & \cmark & \xmark & \xmark  & \xmark  &
 Open + reproducible             & \cmark & \cmark & \cmark & \xmark  & \cmark  & \cmark \\
 Machine-checkable ground truth  & $\circ$ & \cmark & \cmark & \xmark & $\circ$ & \cmark \\
 ATT\&CK-for-Cloud mapped        & \xmark & \xmark & \xmark & $\circ$ & $\circ$ & \cmark \\
-Real-AWS validated              & \xmark & \xmark & \xmark & \xmark  & \xmark  & $\circ$ \\
+Real-AWS validated              & \xmark & \xmark & \xmark & \xmark  & \xmark  & \cmark \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -277,10 +276,10 @@ baseline (\textbf{SIGMA}) guards against the objection that A4 was designed to l
 LLMCloudHunter~\cite{schwartz2025llmcloudhunter} generates detection \emph{rules} from
 CTI reports rather than reconstructing kill chains from live telemetry; comparing it on
 CloudKC-Bench would be a task mismatch, so it is positioned in the related-work taxonomy
-(Section~\ref{sec:related}) rather than run as a benchmark arm. GuardDuty requires
-real-AWS access with a $\geq$7-day warm-up period; it is deferred to a real-AWS
-follow-up study (Section~\ref{sec:threats}); SIGMA already provides an independent
-rules comparison that does not depend on a managed service.
+(Section~\ref{sec:related}) rather than run as a benchmark arm. We did enable GuardDuty on
+the real-AWS account and collect its findings, but it produced no detections mapping to the
+emulated techniques (Section~\ref{sec:threats}); we therefore exclude it as a \emph{scored}
+baseline and retain SIGMA as the independent rules comparison, which needs no managed service.
 
 \subsection{Environments}
 Scenarios run in two environments emitting the identical schema: a reproducible layer
@@ -295,8 +294,8 @@ power analysis (paired design, $\alpha=0.05$, power $0.80$) shows that after
 Holm--Bonferroni over the full comparison grid no category reaches the corrected $n$ for
 moderate effects; we therefore pre-register \emph{two} primary confirmatory tests
 (H1 and H2 on the multi-stage category) and treat all other comparisons as exploratory,
-reported with effect sizes and bootstrap confidence intervals.
-\todo{state the pinned model + date + seed list once Anna's run is fixed.}
+reported with effect sizes and bootstrap confidence intervals. The reported run pins
+\texttt{qwen2.5:32b-instruct-q4\_k\_m} (local Ollama) over the dev set, 3 seeds, on real-AWS telemetry.
 
 \subsection{Metrics and protocol}
 Primary metrics are TPR/recall, FPR, precision, F1, and AUC where meaningful, reported
@@ -319,11 +318,10 @@ Run \texttt{python -m benchmark.cli tcp-robustness} to reproduce.
 % =====================================================================
 \section{Results}\label{sec:results}
 % Owner: Atishay.
-\noindent\textbf{Preliminary run.} The numbers below are a first, internally-valid result on the
-\emph{multi-stage} category (15 scenarios, 3 seeds) with \textbf{qwen2.5:7b} (served locally via Ollama) as the
-LLM and the \emph{synthetic} telemetry backend. Full-category and real-telemetry (LocalStack) runs are in
-progress; the framing and pipeline are fixed, only the numbers will grow. \todo{extend to all categories +
-real telemetry; add a second, larger model.}
+\noindent\textbf{Run configuration.} The numbers below are from a \textbf{real-AWS} run of the full dev set
+(59 scenarios across five categories, 3 seeds) with \textbf{qwen2.5:32b} (served locally via Ollama) as the LLM;
+telemetry was captured by executing each scenario against a real AWS sandbox account. The held-out set remains
+sealed. \todo{add the qwen2.5:7b/synthetic run as a model-scale + reproducibility comparison row.}
 
 \subsection{Two scoring lenses}
 We report reconstruction under two lenses (Section~\ref{sec:bench}): \emph{technique-level} (a stage is
@@ -332,7 +330,7 @@ correct only if the ATT\&CK technique, telemetry source, and cited evidence all 
 and Fig.~\ref{fig:twolens} show they tell very different stories.
 
 \begin{table}[t]
-\caption{Multi-stage kill chains: two scoring lenses (qwen2.5:7b, synthetic, $n{=}15$, 3 seeds).
+\caption{Multi-stage kill chains: two scoring lenses (qwen2.5:32b, real-AWS, $n{=}15$, 3 seeds).
 Technique-level uses parent-technique credit; event-level is technique-agnostic.}
 \label{tab:twolens}
 \centering
@@ -340,18 +338,18 @@ Technique-level uses parent-technique credit; event-level is technique-agnostic.
 \toprule
  & A1 & A2 & A3 & \textbf{A4 (rules)} \\
 \midrule
-Technique-level recall      & 0.037 & 0.011 & 0.041 & \textbf{0.911} \\
-Event-level recall          & 0.674 & 0.641 & 0.732 & 0.967 \\
-Event-level precision       & 0.942 & 0.963 & \textbf{1.000} & 0.727 \\
-Tokens / scenario           & 1540  & 1110  & 1291  & 0 \\
+Technique-level recall      & 0.117 & 0.078 & 0.146 & \textbf{0.867} \\
+Event-level recall          & 0.894 & 0.762 & 0.816 & 0.967 \\
+Event-level precision       & 0.815 & 0.952 & \textbf{1.000} & 0.649 \\
+Tokens / scenario           & 1814  & 1314  & 1393  & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent The LLM arms \textbf{detect attack events precisely} --- event-level recall $0.64$--$0.73$ at
-precision $0.94$--$1.00$, \emph{higher precision than the rules} ($0.73$) --- yet score near-zero at the
-technique level. The rules (A4) win technique-level recall ($0.911$) because they encode the exact
-sub-technique each scenario uses; the LLM, even given the closed technique vocabulary and parent-technique
+\noindent The LLM arms \textbf{detect attack events precisely} --- event-level recall $0.76$--$0.89$ at
+precision $0.82$--$1.00$, \emph{higher precision than the rules} ($0.65$; A3 reaches $1.00$) --- yet score
+near-zero at the technique level. The rules (A4) win technique-level recall ($0.867$) because they encode the
+exact sub-technique each scenario uses; the LLM, even given the closed technique vocabulary and parent-technique
 credit, rarely names the exact technique. The bottleneck is \textbf{technique attribution, not cross-domain
 event detection}.
 
@@ -362,7 +360,7 @@ event detection}.
 \caption{The two-lens gap on multi-stage kill chains: per arm, technique-level recall
 (strict) vs event-level recall (technique-agnostic). The LLM arms (A1--A3) find the
 attack events but rarely name the exact technique; A4 rules do both because their
-signatures encode the answer key. \todo{regenerate from the final 32b / real-AWS run.}}
+signatures encode the answer key (real-AWS, qwen2.5:32b, $n{=}15$, 3 seeds).}
 \label{fig:twolens}
 \end{figure}
 
@@ -370,25 +368,24 @@ signatures encode the answer key. \todo{regenerate from the final 32b / real-AWS
 \centering
 \autofig{figures/recall_by_category.pdf}{Generate: \texttt{benchmark.plots --results <run>.csv}.}
 \caption{Technique-level recall by arm across the five categories (qwen2.5:32b,
-synthetic). A4 rules dominate the strict metric everywhere; the LLM arms are low
-across the board, consistent with the attribution bottleneck.
-\todo{swap in real-AWS results as the headline once available.}}
+real-AWS). A4 rules dominate the strict metric everywhere; the LLM arms are low
+across the board, consistent with the attribution bottleneck.}
 \label{fig:recallcat}
 \end{figure}
 
 \subsection{Primary hypotheses}
-\textbf{H1 (LLM vs rules, technique-level recall):} the best LLM arm (A1) trails A4 by a mean of $-0.874$
-(95\% CI $[-0.959,-0.767]$, Cohen's $d_z=-4.39$, permutation $p<0.001$, Holm-corrected). H1 is
+\textbf{H1 (LLM vs rules, technique-level recall):} the best LLM arm (A1) trails A4 by a mean of $-0.750$
+(95\% CI $[-0.841,-0.654]$, Cohen's $d_z=-3.91$, permutation $p<0.001$, Holm-corrected). H1 is
 \textbf{not supported} --- and, on the strict technique-level metric, the LLM is significantly \emph{worse}.
 The same ranking holds across all five categories (Fig.~\ref{fig:recallcat}).
-\textbf{H2 (multi-agent vs single, F1):} A1 vs A2 differ by $+0.027$ (95\% CI $[-0.004,0.062]$, $d_z=0.42$,
-$p=0.19$): we \textbf{fail to reject} H2 --- multi-agent decomposition adds no measurable value, while costing
-$\sim$40\% more tokens (1540 vs 1110).
+\textbf{H2 (multi-agent vs single, F1):} A1 vs A2 differ by $+0.027$ (95\% CI $[-0.051,0.118]$, $d_z=0.16$,
+$p=0.59$): we \textbf{fail to reject} H2 --- multi-agent decomposition adds no measurable value, while costing
+$\sim$38\% more tokens (1814 vs 1314).
 
 \subsection{Pre-filter cost and latency (C3)}
-The deterministic pre-filter keeps $\sim$82\% of events on multi-stage (filtering ratio $0.82$; A3 runs
-unfiltered at $1.0$). It reduces LLM token cost (A2 $1110$ vs A3 $1291$, $\approx$14\%) --- but at an
-event-recall cost: \emph{A3 (no pre-filter) detects more attack events than A2} ($0.732$ vs $0.641$). Thus the
+The deterministic pre-filter keeps $\sim$90\% of events on multi-stage (filtering ratio $0.90$; A3 runs
+unfiltered at $1.0$). It reduces LLM token cost (A2 $1314$ vs A3 $1393$, $\approx$6\%) --- but at an
+event-recall cost: \emph{A3 (no pre-filter) detects more attack events than A2} ($0.816$ vs $0.762$). Thus the
 pre-filter is a genuine cost-vs-recall trade-off, and for a capable reader model it discards real detections.
 A4 (rules) and SIGMA incur zero LLM cost (Fig.~\ref{fig:costacc}).
 
@@ -397,18 +394,22 @@ A4 (rules) and SIGMA incur zero LLM cost (Fig.~\ref{fig:costacc}).
 \autofig{figures/cost_accuracy.pdf}{Generate: \texttt{benchmark.plots --results <run>.csv
 --category multi\_stage\_kill\_chain}.}
 \caption{Cost--accuracy trade-off on multi-stage kill chains: tokens per scenario vs
-technique-level recall, per arm (qwen2.5:32b, synthetic). A4/SIGMA sit at zero token
-cost; the LLM arms pay tokens without a technique-level return on this metric.
-\todo{regenerate from the final run; add the event-level panel.}}
+technique-level recall, per arm (qwen2.5:32b, real-AWS). A4/SIGMA sit at zero token
+cost; the LLM arms pay tokens without a technique-level return on this metric.}
 \label{fig:costacc}
 \end{figure}
 
 % =====================================================================
 \section{Failure-Mode Analysis}\label{sec:failure}
 % Owner: Atishay.
-\textbf{Technique attribution is the dominant LLM failure.} Because event-level precision is $\geq 0.94$ while
-technique-level recall is $\sim$0.04, almost every event the LLM flags \emph{is} an attack event, but the
-attached ATT\&CK id is usually wrong (Fig.~\ref{fig:confusion}).
+\textbf{Technique attribution is the dominant LLM failure.} Because event-level precision is high
+($0.82$--$1.00$ on multi-stage) while technique-level recall is only $\sim$0.12, almost every event the LLM
+flags \emph{is} an attack event, but the attached ATT\&CK id is usually wrong (Fig.~\ref{fig:confusion}). The
+errors are \emph{systematic, not random}: the model confuses semantically adjacent siblings within a tactic ---
+e.g.\ it labels all network-discovery (T1046) events as T1578, and maps account-manipulation (T1098) onto the
+privilege-escalation cluster (T1548/T1548.005) --- yet it names \emph{distinctive} techniques reliably
+(brute-force T1110 at $100\%$ exact). It identifies the malicious event and the right tactic family, then picks
+the wrong specific sub-technique when several share observable signatures.
 
 \begin{figure}[t]
 \centering
@@ -416,19 +417,22 @@ attached ATT\&CK id is usually wrong (Fig.~\ref{fig:confusion}).
 (needs \texttt{benchmark.cli confusion --csv} from the run DB).}
 \caption{Where technique attribution breaks (arm A1): per ground-truth technique, the
 fraction the LLM labels exactly, with parent-only credit, with the wrong technique, or
-misses entirely. \todo{generate from the 32b run DB once uploaded.}}
+misses entirely (real-AWS, qwen2.5:32b, arm A1).}
 \label{fig:confusion}
 \end{figure} Before the technique vocabulary was supplied, the model labelled events
 with techniques outside the benchmark entirely (e.g., T1569, T1222); constraining the label space fixed the
 out-of-vocabulary errors but not the within-vocabulary confusions.
 
-\textbf{Rules (A4) failure.} A4 misses \emph{Cloud Infrastructure Discovery} (T1580) entirely on multi-stage
-(its signature cannot distinguish T1580 from the sibling T1526), and over-flags on benign scenarios
-(false-positive precision $0.73$) because every \texttt{ListBuckets}/\texttt{GetObject} trips a signature.
+\textbf{Rules (A4) failure.} The rules are exact on $16$ of $18$ techniques, failing only two sibling-ambiguity
+cases --- \emph{Cloud Infrastructure Discovery} (T1580, mapped to the sibling T1526) and \emph{Resource
+Hijacking} (T1496, mapped to T1578) --- which shows their high technique-level recall is a near-inverse of the
+generator rather than general detection skill. They also \textbf{over-flag}: event-level precision falls to
+$0.65$ on multi-stage (vs the LLM's $0.82$--$1.00$) and to zero on benign, because every
+\texttt{ListBuckets}/\texttt{GetObject} trips a signature.
 
-\textbf{Pre-filter recall stress.} On multi-stage the pre-filter retains $0.967$ of ground-truth events; the
-recall cost concentrates in the low-and-slow category, where sparse, subtle events are most likely to be
-dropped before any arm sees them. \todo{report low-and-slow pre-filter recall from the full run.}
+\textbf{Pre-filter recall stress.} In this run the pre-filter retained ground-truth events well --- $0.967$ on
+multi-stage and $1.00$ on low-and-slow --- so the detections A3 recovers but A2 loses (Table~\ref{tab:twolens})
+are dropped by the \emph{technique-signature} narrowing, not by wholesale removal of ground-truth events.
 
 % =====================================================================
 \section{Discussion}\label{sec:discussion}
@@ -441,13 +445,19 @@ labelling is better left to rules or human analysts. Multi-agent decomposition d
 (H2), and the pre-filter trades a modest cost saving for lost detections, so a cost-sensitive deployment might
 skip it when the model can ingest the full stream.
 
-\textbf{Why the rules win technique-level, and why that is not the whole story.} On this \emph{synthetic}
-benchmark the rules are near-optimal \emph{by construction}: their signatures are effectively the inverse of
-the scenario generator, so A4's $0.91$/$0.97$ scores are an upper bound a real deployment would not reach. The
-strict technique-level metric therefore structurally favours rules that encode the answer key; we accordingly
-report event-level detection as the headline and technique-level as a stricter secondary, and defer the
-primary-metric decision to the pre-registration sign-off. A real-telemetry run, where no rule is a perfect
-inverse, is the decisive next test. \todo{supervisor: ratify primary metric (event- vs technique-level).}
+\textbf{Why the rules win technique-level, and why that is not the whole story.} The rules are near-optimal
+\emph{by construction}: their signatures are effectively the inverse of the scenario generator, so A4's
+$0.87$/$0.97$ scores are an upper bound a real deployment would not reach. Notably, executing the scenarios
+against real AWS did \emph{not} dissolve this advantage --- the captured telemetry is still the structured API
+calls the benchmark issues, on which the signatures stay near-exact ($16$ of $18$ techniques). An independent
+community Sigma rule-set (the SIGMA arm) lands between the extremes --- multi-stage technique-level recall
+$0.74$ versus A4's $0.87$ and the LLM's $0.12$ --- confirming that A4's dominance reflects encoding the answer
+key rather than a deliberately weak external baseline. The strict technique-level metric therefore structurally
+favours rules that encode the answer key; we accordingly report event-level detection as the headline and
+technique-level as a stricter secondary. A truly decisive test requires \emph{noisy} production telemetry ---
+injected benign background traffic or a warmed managed-detector stream --- where no static rule can invert the
+data; this is the primary follow-up. The choice of primary metric --- event- versus technique-level --- awaits
+pre-registration sign-off.
 
 % =====================================================================
 \section{Threats to Validity}\label{sec:threats}
@@ -461,18 +471,53 @@ multi-seed runs, and reported variance. \emph{Statistical:} small per-category $
 power analysis restricts confirmatory claims to two primary tests; other categories are
 descriptive. \emph{Reproducibility:} model drift/deprecation---mitigated by version
 pinning and full artifact release; adversarial LLM evasion is explicitly out of scope.
-\emph{Baseline coverage:} GuardDuty requires real-AWS access with a $\geq$7-day warm-up;
-it is deferred to a follow-up study. LLMCloudHunter generates detection rules from CTI
-reports (a different task) and is therefore positioned in related work rather than scored
-on the benchmark; the community Sigma baseline (SIGMA arm) provides an independent
-rules-only comparison that does not require a managed AWS service.
+\emph{Baseline coverage.} We enabled Amazon GuardDuty on the sandbox account with a
+$\sim$6-day baseline and collected its findings over the real-AWS run; it produced
+\emph{no} findings mapping to any emulated technique (its only finding, root-credential
+API usage, was unrelated account hygiene). We read this as a \emph{construct} limitation of
+the telemetry rather than of GuardDuty: our scenarios execute the control-plane
+\emph{shape} of attacks but not the signals GuardDuty is tuned for---the exfiltration path
+is a synthetic-network fallback (no real VPC Flow Logs), the adversary IP addresses are
+documentation-range rather than threat-intel-flagged, no crypto-mining instance actually
+launches, and most stages are proxied, benign-looking API calls from a single legitimate
+principal. We therefore exclude GuardDuty as a \emph{scored} baseline and retain the
+community Sigma baseline (SIGMA arm) as the independent rules-only comparison, which
+requires no managed service. Making a managed-detector comparison meaningful would require
+raising scenario realism to emit GuardDuty-triggering signals (threat-intel-flagged
+sources, real egress volume, genuinely launched instances)---a benchmark-realism upgrade we
+leave to future work. LLMCloudHunter generates detection rules from CTI reports (a
+different task) and is therefore positioned in related work rather than scored here.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % Owner: Anna
-\result{summary of findings including any negative results; the benchmark as the durable
-contribution; future work (real-AWS breadth, external baselines, Zeek network telemetry,
-adversarial evasion).}
+We introduced CloudKC-Bench, the first open benchmark for AWS control-plane multi-stage
+kill-chain reconstruction, and used it to run a pre-registered, four-arm controlled study
+--- plus an independent community Sigma baseline --- on real-AWS telemetry. Our central
+result is a \emph{decomposition} rather than a verdict: a mid-sized open LLM (qwen2.5:32b)
+performs cross-domain attack-\emph{event} detection at higher precision than deterministic
+rules (event-level precision up to $1.00$ vs $0.65$), yet fails at exact
+ATT\&CK-\emph{technique} attribution (technique-level recall $\sim$0.12 vs the rules'
+$0.87$), and its errors are \emph{systematic} confusions among sibling techniques rather
+than random noise. We resolve both pre-registered hypotheses as negatives and report them
+plainly: the LLM does not beat the rules on strict technique-level recall (H1), and
+multi-agent decomposition adds no measurable value over a single agent (H2). The Sigma
+baseline lands between the two, and an enabled GuardDuty produced no findings on our
+telemetry --- both underscoring that the strict metric rewards signatures that encode the
+answer key. For a SOC, the practical reading is that a mid-sized LLM is a promising
+\emph{high-precision triage and correlation} aid, while exact technique labelling is better
+left to rules or analysts. The durable contribution, however the metric debate settles, is
+the benchmark itself: an open, ground-truthed, mechanically scored artifact that makes such
+claims falsifiable.
+
+\noindent\textbf{Future work.} Two threads follow directly from our results. First, closing
+the \emph{signal gap} that made both the rules near-optimal and GuardDuty silent: injecting
+benign background traffic and raising scenario realism so the telemetry carries the network-
+and threat-intel-level signals that managed detectors and a noisy production stream would
+surface --- the decisive test of whether the LLM's event-level precision advantage survives
+outside a structured capture. Second, breadth: capable-model and larger real-AWS runs,
+Zeek-derived network telemetry, the sealed held-out evaluation, and adversarial-evasion
+scenarios.
 
 \section*{Availability}
 The generator, manifests, schema, matching function, and analysis scripts are released at

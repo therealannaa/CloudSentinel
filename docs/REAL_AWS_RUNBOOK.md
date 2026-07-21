@@ -11,18 +11,18 @@ near-zero cost. Follow the phases in order. Every command is copy-pasteable; rep
 
 ## TL;DR of the flow
 
-1. Fresh **sandbox AWS account** → budget alarm → scoped IAM user.
+1. Fresh **sandbox AWS account** → budget alarm → scoped IAM user with **long-lived keys** (not temporary creds).
 2. **Enable GuardDuty first** (it needs a ≥7-day warm-up; the 30-day free trial covers the whole campaign).
-3. Set env vars (region lock + `t3.micro` override + `BENCH_ALLOW_REAL_AWS=1`).
-4. `generate --environment real_aws` → executes scenarios against AWS **once**, captures telemetry, auto-tears-down.
-5. `run-arms --environment real_aws` → runs the LLM/rules arms over the captured events (this step is **offline** — no AWS cost).
+3. Set env vars (region lock + `t3.micro` override + `BENCH_ALLOW_REAL_AWS=1` + `OLLAMA_KEEP_ALIVE=-1`).
+4. `generate --environment real_aws --resume` → captures telemetry against AWS **once**, auto-tears-down, restartable.
+5. Warm the model, then `run-arms --environment real_aws --resume` → arms over captured events, **offline**, restartable.
 6. `analyze` / `detection` / `confusion` / `failures` → the numbers.
 7. Export **GuardDuty findings**, compare to ground truth.
 8. **Teardown verification** → confirm zero orphaned resources → disable GuardDuty → stop recurring charges.
 
 ---
 
-## ⚠️ Three cost/data traps — read before anything else
+## ⚠️ Five cost/data traps — read before anything else
 
 These are real, confirmed in the code. Ignoring them either burns money or silently corrupts the run.
 
@@ -37,6 +37,12 @@ These are real, confirmed in the code. Ignoring them either burns money or silen
 3. **GuardDuty has no automated scoring in this repo.** The benchmark scores the *arms* (A1–A4/SIGMA)
    automatically; GuardDuty is enabled and its findings are exported/compared **manually** (Phase 7). Budget
    time for that. Don't expect `analyze` to produce a GuardDuty number.
+4. **Cold-model reload aborts a combined run.** Running capture + arms as one command leaves Ollama idle for the
+   1–2 h capture; the default 5-min keep-alive unloads the 32B, and the first arm call then cold-loads ~20 GB and
+   times out. Fix: `OLLAMA_KEEP_ALIVE=-1`, split into two phases, and warm the model between them (Phase 6).
+5. **Expiring credentials silently poison the capture.** Temporary creds (SSO/`assume-role`, i.e. anything with
+   an `AWS_SESSION_TOKEN`) expire at ~1 h; when they lapse mid-capture the `_safe()` guard records error
+   telemetry instead of crashing. Use long-lived IAM user keys and clear stale session env vars (Phase 3).
 
 ---
 
@@ -148,10 +154,33 @@ export BENCH_EC2_INSTANCE_TYPE=t3.micro       # TRAP #1 fix — forces cheap ins
 export LLM_BASE_URL=http://localhost:11434/v1
 export LLM_API_KEY=ollama
 export LLM_MODEL=qwen2.5:32b
+export OLLAMA_KEEP_ALIVE=-1                   # TRAP #4 fix — keep the model resident (see Phase 6)
 ```
 
 Without `BENCH_ALLOW_REAL_AWS=1` or with a region outside `APPROVED_REGIONS`, the backend raises `RealAWSGated`
 and nothing runs — that is the intended safety behavior.
+
+> **Windows/PowerShell:** use `$env:NAME="value"` instead of `export`. On Windows the operator typically runs
+> from PowerShell — set `OLLAMA_KEEP_ALIVE` for the **Ollama server** (then restart Ollama), not just the shell.
+
+**⚠️ Credential longevity (TRAP #5 — silent data poisoning).** A full `--set all` capture takes 1–2 hours.
+**Temporary** credentials (SSO / `assume-role` / anything with an `AWS_SESSION_TOKEN`) expire at ~1 h by
+default; when they lapse mid-capture, every AWS call is caught by the backend's `_safe()` guard and recorded as
+*error telemetry* — the run does **not** crash, it silently produces a poisoned second half. LocalStack never
+hits this because its dummy `test`/`test` creds never expire. Use **long-lived IAM user access keys** from the
+sandbox account (Phase 1 creates them) and make sure no stale temporary creds override the profile:
+
+```bash
+aws sts get-caller-identity      # Arn should be .../user/cloudsentinel-bench, NOT .../assumed-role/...
+echo "$AWS_SESSION_TOKEN"         # must be EMPTY; if set, you're on temporary creds
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN   # env-var creds override the profile
+```
+```powershell
+# PowerShell equivalent:
+Remove-Item Env:AWS_ACCESS_KEY_ID, Env:AWS_SECRET_ACCESS_KEY, Env:AWS_SESSION_TOKEN -ErrorAction SilentlyContinue
+```
+If you must use a role, raise its session: `aws iam update-role --role-name <R> --max-session-duration 43200`
+then `assume-role --duration-seconds 43200` (12 h). Long-lived user keys are simpler and never expire.
 
 ---
 
@@ -191,21 +220,43 @@ If that completes cleanly, the real-AWS run will behave the same (minus the AMI 
 
 ## Phase 6 — The real-AWS run (after the ≥7-day GuardDuty warm-up)
 
+**Run capture and arms as two separate, resumable phases — do NOT combine them into one command.** A
+`--set all` real-AWS capture runs 1–2 hours; the LLM arms are another multi-hour local job. Splitting them
+means a crash in either phase never loses the other's work, and it avoids the failure below.
+
+> **TRAP #4 — cold-model reload after a long capture.** If you run capture and arms as one command, Ollama sits
+> **idle for the whole 1–2 h capture** and (with the default 5-minute keep-alive) unloads the 32B model. When
+> the arms then start, the first call cold-loads ~20 GB and blows past the read timeout → the run aborts
+> "1–2 h in." Fixes, both applied below: set `OLLAMA_KEEP_ALIVE=-1` (Phase 3) so the model stays resident, and
+> **warm the model right before the arms**. This is why LocalStack "just works" — its capture is instant, so
+> there's no idle gap.
+
 Use a **fresh DB named for this experiment** so results never mix with other models/environments.
 
 ```bash
-# 1) Execute scenarios against real AWS ONCE — captures telemetry, auto-tears-down each scenario.
-python -m benchmark.cli --db qwen32b_realaws.db generate --set all --environment real_aws
+# STEP 1 — capture real-AWS telemetry ONCE, RESUMABLE. This is the only step that touches (and bills) AWS.
+#   --resume skips scenarios already captured in the DB, so a crashed capture restarts where it left off
+#   (only the missing scenarios re-hit the API) instead of redoing hours of work.
+python -m benchmark.cli --db qwen32b_realaws.db generate --set all --environment real_aws --resume
 
-# 2) Run the arms over the captured events. This step is OFFLINE (LLM is local) — no AWS cost.
-python -m benchmark.cli --db qwen32b_realaws.db run-arms --set all --environment real_aws \
+# Between phases: keep the model resident and warm it so the first arm call isn't a cold 20 GB load.
+export OLLAMA_KEEP_ALIVE=-1                              # (already set in Phase 3; restart Ollama if you set it late)
+ollama run qwen2.5:32b-instruct-q4_k_m "ready"          # warm-up ping
+
+# STEP 2 — run the arms over captured events, RESUMABLE. OFFLINE (local LLM) — no AWS, no cost.
+#   --resume skips (arm, scenario, seed) combinations already scored, so if Ollama dies mid-run you just
+#   re-run this exact line and it continues from where it stopped.
+python -m benchmark.cli --db qwen32b_realaws.db run-arms --set all --environment real_aws --resume \
   --csv results_qwen32b_realaws.csv
 ```
 
 Notes:
-- Step 1 is the only step that touches (and bills) AWS. Step 2 reads events from the DB.
-- If you skip step 1, `run-arms` will auto-generate against real AWS on its own — so run step 1 explicitly and
-  confirm it finished before step 2, to keep AWS execution to exactly one pass.
+- **Step 2 never touches AWS.** Because the scenarios are already in the DB, `run-arms` does not auto-generate,
+  so AWS credentials, throttling, and teardown flakiness are irrelevant to the arms — only Step 1 needs creds.
+- **Always run Step 1 explicitly first.** If you skip it, `run-arms` will auto-generate against real AWS on its
+  own; running Step 1 separately keeps AWS execution to exactly one controlled pass.
+- **If a phase crashes,** just re-run the same command with `--resume` — Step 1 skips captured scenarios, Step 2
+  skips scored runs. Neither redoes completed work.
 - The captured `RunInstances` events (T1578/T1496) will carry an AMI error unless Trap #2 is addressed.
 
 ---
