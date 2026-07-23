@@ -1,4 +1,4 @@
-%% CloudKC-Bench — full paper (maam-spec structure), IEEEtran conference.
+%% CloudKC-Bench — full paper (maam-spec structure), IEEEtran journal.
 %% Compiles on Overleaf as-is. Figures in ./figures/ (vector PDFs).
 \documentclass[journal]{IEEEtran}
 \usepackage{cite}
@@ -16,10 +16,9 @@
 
 \title{CloudKC-Bench: An Open Benchmark for LLM Cross-Domain\\Correlation in AWS Kill-Chain Reconstruction}
 
-\author{\IEEEauthorblockN{Atishay Jain, Anna M., and S.~Nagasundari}
-\IEEEauthorblockA{Centre for Information Security, Forensics and Cyber Resilience (ISFCR)\\
-PES University, Bengaluru, India\\
-atishay.offical@gmail.com}}
+\author{Atishay~Jain, Anna~M., and S.~Nagasundari%
+\thanks{The authors are with the Centre for Information Security, Forensics and Cyber Resilience
+(ISFCR), PES University, Bengaluru, India (e-mail: atishay.offical@gmail.com).}}
 
 \maketitle
 
@@ -305,6 +304,25 @@ flagged, then
 \mathrm{event\_precision}=\frac{|P\cap G|}{|P|}.
 \end{equation}
 Reporting both separates \emph{finding} an attack from \emph{labeling} it.
+
+\subsection{Pre-Registration and Statistical Protocol}
+To keep the study honest, the research question, the hypotheses, and every statistical threshold were
+fixed in writing \emph{before any result was computed}. Two confirmatory hypotheses are pre-registered
+on the multi-stage category, the primary test bed: H1 asks whether the best language-model arm exceeds
+the rules on technique-level recall by a pre-set margin, and H2 asks whether the multi-agent arm differs
+from the single agent on F1 by more than a small equivalence band. An a-priori power analysis (paired
+design, $\alpha=0.05$, power $0.80$) showed that, after correcting for multiple comparisons across the
+full grid of arms and categories, only very large effects are detectable at the frozen sample size; we
+therefore pre-registered exactly \emph{two} confirmatory tests and treat every other comparison as
+exploratory, reported with effect sizes and confidence intervals rather than as significance claims.
+
+The unit of analysis is the scenario, never the individual event or seed: the three seeds are repeated
+measures averaged to a single value per scenario before any aggregation, and the five categories are
+never pooled. For each reported quantity we give a bootstrap $95\%$ confidence interval (percentile
+method over resampled scenarios), and for the two confirmatory tests we add a paired effect size
+(Cohen's $d_z$) and a paired permutation $p$-value, corrected across the two tests with the
+Holm--Bonferroni procedure. This protocol is what lets us report negative results---H1 unsupported, H2
+not rejected---as findings rather than as failures to reach significance.
 
 % ====================================================================
 \section{Implementation}\label{sec:impl}
@@ -791,6 +809,20 @@ incorporating passive network telemetry from a dedicated sensor, running the sea
 final confirmatory check, and adding adversarial-evasion scenarios that probe robustness. We hope the
 benchmark and its honest, mixed results encourage the community to measure, rather than assume, the
 value of language models for reconstructing cloud attacks.
+
+% ====================================================================
+\section*{Reproducibility and Availability}
+CloudKC-Bench is released as a self-contained artifact comprising the scenario generator, the
+machine-checkable manifests and their JSON schema, the deterministic matching function, the four arms
+and the Sigma baseline, and every analysis and figure-generation script used in this paper. The
+synthetic backend regenerates identical telemetry offline, without a cloud account or a graphics card,
+so the reproducibility layer of every result can be reproduced on a commodity laptop; the real-AWS
+results are reproduced by replaying the released scenarios against a sandbox account. Experiments pin a
+single model version, record it with every result, and warn when a database mixes models; a
+continuous-integration suite exercises the full pipeline on three Python versions on every change. Each
+model or environment is stored in its own database to prevent accidental mixing, and the two-phase run
+separates the billable capture step from the offline scoring step so that analyses can be repeated
+without re-incurring cloud cost.
 
 % ====================================================================
 \begin{thebibliography}{99}
