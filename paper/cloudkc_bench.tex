@@ -1,6 +1,6 @@
 %% CloudKC-Bench — full paper (maam-spec structure), IEEEtran conference.
 %% Compiles on Overleaf as-is. Figures in ./figures/ (vector PDFs).
-\documentclass[conference]{IEEEtran}
+\documentclass[journal]{IEEEtran}
 \usepackage{cite}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
@@ -9,6 +9,8 @@
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \graphicspath{{figures/}}
+\newcommand{\cmark}{\ensuremath{\checkmark}}
+\newcommand{\xmark}{\ensuremath{\times}}
 
 \begin{document}
 
@@ -87,7 +89,8 @@ one~\cite{wilkens, hetfusion}.
 Despite the excitement, claims about language models in this area are often made without the
 safeguards that would let others check them. Results are frequently reported without fair baselines
 that separate the model's contribution from the rest of the system, without shared and clearly
-labeled datasets, and without admitting that the model's answers can change from run to run. On top
+labeled datasets, and without admitting that the model's answers can change from run to run---the
+kind of pitfalls shown to inflate results across security machine learning~\cite{arp22}. On top
 of this, no public benchmark exists for rebuilding AWS control-plane kill chains with answers a
 computer can check automatically. Existing benchmarks target a different platform, a different
 task---such as malware analysis, threat-intelligence question answering, architecture modeling, or
@@ -143,24 +146,62 @@ remains largely unstudied is their combination---using a model to rebuild an ATT
 chain from several disconnected cloud logs at once---and whether doing so measurably helps.
 
 \subsection{Existing Approaches}
-Prior work on turning telemetry into detections falls into four families. The first is \emph{rule-based
-detection}, exemplified by the vendor-neutral Sigma standard~\cite{sigma}, whose strengths are
-transparency and low cost but whose weakness is a high false-positive rate, because generic rules
-match the ordinary administrative actions that attackers also use. The second is \emph{provenance- and
-graph-based detection}, which links log entries into a causal graph so a multi-stage attack appears as
-a connected path; a dedicated survey documents its maturity~\cite{provsurvey} and recent work applies
-transformer models over provenance graphs~\cite{tbdetector}, but these methods were designed for host
-logs rather than cloud control-plane telemetry and assume a causal signal that cloud API logs do not
-provide. The third is \emph{LLM-assisted tooling}, closest to ours, which has used language models to
+Prior work on turning telemetry into detections falls into four families, and comparing them shows why
+none yet solves the problem we target.
+
+The first family is \emph{rule-based detection and event correlation}. In its simplest form it is
+captured by the vendor-neutral Sigma standard~\cite{sigma}, whose strengths are transparency and low
+cost but whose weakness is a high false-positive rate, because generic rules match the ordinary
+administrative actions that attackers also use. To move beyond single events, security-information-and-
+event-management (SIEM) systems chain rules through \emph{correlation}, and a growing body of work
+applies machine learning to this step: recent surveys of artificial-intelligence-driven security event
+correlation catalog the models and their open challenges~\cite{aisecevent22}, while dedicated methods
+correlate multi-step alerts into attack scenarios~\cite{maac} or scale incident correlation to billions
+of events~\cite{graphweaver}. These approaches capture cross-stage structure, but they depend on
+carefully tuned correlation logic and continue to struggle with the false-positive burden that rules
+impose.
+
+The second family is \emph{provenance- and graph-based detection}, which links log entries into a
+causal graph so that a multi-stage attack appears as a connected path; a dedicated survey documents its
+maturity~\cite{provsurvey} and recent work applies transformer models over provenance
+graphs~\cite{tbdetector}. These methods capture cross-stage structure that rules miss, but they were
+designed for host endpoint logs rather than cloud control-plane telemetry and assume a rich causal
+signal that cloud API logs do not provide.
+
+The third family is \emph{LLM-assisted tooling}, closest to ours, which has used language models to
 generate detection rules from threat reports~\cite{llmcloudhunter} or to explain the alerts of a
 conventional detector~\cite{huntgpt}; these address adjacent tasks rather than reconstructing a chain
-from live telemetry, and are rarely evaluated against fair baselines. The fourth is \emph{security
-benchmarks}~\cite{cybersoceval, excytin, orgforge, acseeval, mukherjee}, which advance reproducibility
-but target a different platform or task. Related attack-emulation tools such as Stratus Red
-Team~\cite{stratus} and CloudGoat~\cite{cloudgoat} provide ATT\&CK-mapped cloud scenarios, but they are
-generators of adversary activity rather than scored benchmarks with ground-truth answers. Taken
-together, no existing approach reconstructs AWS control-plane kill chains from live telemetry with
-automatic, mechanical scoring.
+from live telemetry, and are rarely evaluated against fair baselines. A parallel line benchmarks the
+security \emph{knowledge} of language models, for cybersecurity advisory~\cite{secure_bench} and across
+a rapidly expanding set of tasks~\cite{llmbenchsurvey}, but measuring what a model knows is distinct
+from measuring whether it can reconstruct an attack from live telemetry.
+
+The fourth family is \emph{security benchmarks}~\cite{cybersoceval, excytin, orgforge, acseeval,
+mukherjee}, which advance reproducibility but target a different platform or task. Related attack-
+emulation tools such as Stratus Red Team~\cite{stratus} and CloudGoat~\cite{cloudgoat} provide
+ATT\&CK-mapped cloud scenarios, but they are generators of adversary activity rather than scored
+benchmarks with ground-truth answers. Table~\ref{tab:coverage} positions CloudKC-Bench against the five
+closest benchmarks along six properties. No competitor satisfies all six simultaneously; the opening it
+leaves is an AWS-control-plane, telemetry-driven, machine-checkable kill-chain-reconstruction
+benchmark, which is precisely the gap CloudKC-Bench fills.
+
+\begin{table*}[t]
+\caption{Coverage gap against the closest benchmarks. \cmark~yes, \xmark~no, $\circ$~partial.}
+\label{tab:coverage}
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+Property & CyberSOCEval~\cite{cybersoceval} & ExCyTIn~\cite{excytin} & OrgForge-IT~\cite{orgforge} & LLMCloudHunter~\cite{llmcloudhunter} & ACSE-Eval~\cite{acseeval} & \textbf{CloudKC-Bench} \\
+\midrule
+AWS control-plane specific     & \xmark & \xmark & \xmark & $\circ$ & $\circ$ & \cmark \\
+Multi-stage kill chains        & \xmark & \cmark & \xmark & \xmark  & \xmark  & \cmark \\
+Open and reproducible          & \cmark & \cmark & \cmark & \xmark  & \cmark  & \cmark \\
+Machine-checkable ground truth & $\circ$ & \cmark & \cmark & \xmark & $\circ$ & \cmark \\
+ATT\&CK-for-Cloud mapped       & \xmark & \xmark & \xmark & $\circ$ & $\circ$ & \cmark \\
+Real-AWS validated             & \xmark & \xmark & \xmark & \xmark  & \xmark  & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \subsection{Challenges}
 Three difficulties explain why that opening has persisted. First, cloud telemetry is \emph{siloed by
@@ -169,7 +210,10 @@ events across sources is non-trivial. Second, the detectors themselves are limit
 against precision in a way that is hard to escape, while language models introduce non-determinism and
 can confidently produce a plausible but wrong label. Third, evaluation is weak: much work reports
 success without a shared ground-truthed dataset, without baselines that isolate each component, and
-without acknowledging model variability, making headline numbers hard to trust.
+without acknowledging model variability, making headline numbers hard to trust. These are precisely the
+methodological pitfalls---among them data leakage, unrealistic class balance, and inappropriate
+baselines---that a broad study of machine learning in computer security identified as silently
+undermining reported results~\cite{arp22}, and they motivate the safeguards built into our benchmark.
 
 \subsection{Research Gap}
 Synthesizing across these families and challenges, the field lacks two things at once: an open,
@@ -611,15 +655,53 @@ noisy production telemetry in which no static rule can invert the data. Practica
 decomposition should not be adopted, the pre-filter is a tunable cost-versus-recall knob, and because
 detection is scale-insensitive a deployment wanting only triage can use a small model.
 
-Several limitations qualify these conclusions. The scenarios are authored, so realism has a ceiling,
-mitigated by real-incident grounding, a sealed hold-out set, and real-AWS execution. The rules'
-near-optimality is partly a construct artifact, which is why we report both lenses. Model
-non-determinism threatens reproducibility, addressed by a pinned model and three seeds. Per-category
-samples are small, so confirmatory claims are limited to two pre-registered tests. An enabled managed
-cloud detector produced no findings mapping to the emulated techniques, because our executed-API
-telemetry lacks the network and threat-intelligence signals such a detector consumes; we report this
-as an honest null and retain the community rule set as the scored external baseline. The study uses
-one sandbox account and one model family, so the scaling result is indicative rather than definitive.
+These interpretations are subject to several threats to validity, which we examine systematically in
+Section~\ref{sec:threats}.
+
+% ====================================================================
+\section{Threats to Validity}\label{sec:threats}
+We organize the threats to our conclusions along the standard axes and describe how each is mitigated.
+
+\emph{External validity} concerns whether our findings generalize beyond this study. The scenarios,
+although grounded in documented real incidents and mapped to ATT\&CK techniques, are authored by the
+research team, so their realism has a ceiling. We mitigate this with real-incident grounding, a sealed
+hold-out set authored before the system is finalized and evaluated only once, and execution against a
+real AWS account rather than a simulator alone. Even so, a single sandbox account and one model family
+bound the generality of the scaling conclusion, which we present as indicative rather than definitive.
+
+\emph{Construct validity} concerns whether the metrics measure what we intend. The rule-based arm's
+near-optimal technique-level recall is partly an artifact of the benchmark, because its signatures
+effectively invert the scenario generator; we address this by reporting two complementary lenses and
+leading with event-level detection, and by including an independent community rule baseline that is not
+tuned to our scenarios. The bespoke matching function is a further construct risk, mitigated by leading
+with standard classification metrics (Section~\ref{sec:results}) and by publishing the function so that
+it can be independently inspected.
+
+\emph{Internal validity} concerns confounds within the experiment. The chief internal threat is
+language-model non-determinism, which can render results irreproducible; we pin a single model version,
+average over three seeds, and report the measured run-to-run variance, which is small. Holding model,
+telemetry, and compute fixed across arms ensures that any score difference is attributable to the single
+factor under test.
+
+\emph{Statistical conclusion validity} concerns whether our inferences are sound given the sample. Per-
+category sample sizes are small, so an a-priori power analysis restricts confirmatory claims to the two
+pre-registered primary tests, corrected with the Holm--Bonferroni procedure, and treats all other
+comparisons as descriptive, reported with effect sizes and bootstrap confidence intervals rather than
+family-wise significance. These safeguards directly answer the evaluation pitfalls catalogued for
+security machine learning~\cite{arp22}.
+
+\emph{Baseline coverage} concerns the fairness of comparison. We enabled a managed cloud detector with a
+multi-day baseline and collected its findings over the real-AWS run, but it produced no findings mapping
+to any emulated technique. We interpret this as a construct limitation of the telemetry rather than of
+the detector: our executed-API scenarios reproduce the control-plane shape of attacks but not the
+network- and threat-intelligence-level signals such a detector consumes. We therefore report it as an
+honest null and retain the community rule set as the scored external baseline; raising scenario realism
+to emit those signals is future work.
+
+\emph{Reproducibility} concerns whether the study can be repeated. Model drift and deprecation threaten
+long-term reproducibility, mitigated by version pinning and the release of the full
+artifact---generator, manifests, schema, matching function, and analysis scripts. Adversarial evasion of
+the language model is explicitly out of scope for this study.
 
 % ====================================================================
 \section{Conclusion}\label{sec:conc}
@@ -663,6 +745,12 @@ evaluation, and adversarial-evasion scenarios.
 \bibitem{stratus} Datadog, ``Stratus Red Team: Adversary Emulation for the Cloud.'' [Online]. Available: github.com/DataDog/stratus-red-team
 \bibitem{cloudgoat} Rhino Security Labs, ``CloudGoat: Vulnerable-by-Design AWS Environment.'' [Online]. Available: github.com/RhinoSecurityLabs/cloudgoat
 \bibitem{qwen} Qwen Team, ``Qwen2.5 Technical Report,'' 2024. [Verify arXiv ID].
+\bibitem{arp22} D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro, and K. Rieck, ``Dos and Don'ts of Machine Learning in Computer Security,'' in \emph{Proc.\ 31st USENIX Security Symp.}, 2022.
+\bibitem{aisecevent22} ``A Survey on Artificial Intelligence Techniques for Security Event Correlation: Models, Challenges, and Opportunities,'' \emph{Artificial Intelligence Review} (Springer), 2022.
+\bibitem{maac} ``MAAC: Novel Alert Correlation Method to Detect Multi-step Attack,'' arXiv:2011.07793, 2020.
+\bibitem{graphweaver} ``GraphWeaver: Billion-Scale Cybersecurity Incident Correlation,'' arXiv:2406.01842, 2024.
+\bibitem{secure_bench} ``SECURE: Benchmarking Large Language Models for Cybersecurity Advisory,'' arXiv:2405.20441, 2024.
+\bibitem{llmbenchsurvey} ``A Survey on Large Language Model Benchmarks,'' arXiv:2508.15361, 2025.
 \end{thebibliography}
 
 \end{document}
