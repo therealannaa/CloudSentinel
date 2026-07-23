@@ -580,14 +580,51 @@ A4 & 0.867 & 0.867 & 0.967 & 0.967 \\
 \end{figure}
 
 \subsection{Where Attribution Breaks}
-Fig.~\ref{fig:conf} dissects the reference arm's technique assignments. The failures are systematic:
-the model names distinctive techniques reliably (brute-force credential attacks every time) but for
-techniques whose footprint resembles a sibling it consistently picks the wrong family member---network
-discovery is labeled as instance creation, and account manipulation is mapped onto neighboring
-privilege-escalation techniques. Fig.~\ref{fig:confscale} asks whether a larger model repairs this,
-and the answer is largely no: scale wins on the distinctive techniques it already handles but changes
-nothing on the many both models miss. The attribution bottleneck is structural, rooted in the
-ambiguity of the telemetry, not dissolved by a bigger model.
+Fig.~\ref{fig:conf} dissects the reference arm's technique assignments. The failures are systematic
+rather than random: the model names distinctive techniques reliably---brute-force credential attacks
+every time---but struggles wherever several techniques share an observable footprint. Some errors are
+within-family substitutions that parent-technique credit partly absorbs (for example, temporary elevated
+access credited to its parent), while others cross ATT\&CK tactics entirely, such as labeling
+network-discovery events as infrastructure modification. Fig.~\ref{fig:confscale} asks whether a larger
+model repairs this, and the answer is largely no: scale wins on the distinctive techniques it already
+handles but changes little on the many both models miss. The attribution bottleneck is structural,
+rooted in the ambiguity of the telemetry, not dissolved by a bigger model.
+
+We quantify these behaviors with four task-specific reliability metrics in Table~\ref{tab:taskspec}. No
+multi-stage attack went entirely unnoticed---every arm achieves a $100\%$ \emph{detection-success rate},
+flagging at least one true attack event in every scenario---yet the \emph{full-chain success rate},
+reconstructing every stage correctly, is $0\%$ for the language model against $60\%$ for the rules. The
+\emph{hallucination rate}, the fraction of proposals naming a technique outside the benchmark's closed
+vocabulary despite the label set being supplied in the prompt, is low at 32B ($\le 1.8\%$) but rises
+sharply for the smaller 7B model (to $6$--$10\%$): the vocabulary constraint suppresses hallucination
+without eliminating it, and scale helps markedly. Finally, comparing \emph{tactic-level
+accuracy}---whether the assigned technique at least shares the true technique's ATT\&CK tactic---against
+exact technique accuracy tests for a family-level signal: the 32B model labels the exact technique on
+only $4$--$8\%$ of attack events but a same-tactic technique on $14$--$22\%$. This weak doubling reveals
+a limited family-level understanding; but because tactic accuracy still trails the rules' $97\%$ by a
+wide margin, the model's difficulty is a broad attribution weakness, not merely within-tactic sibling
+confusion.
+
+\begin{table}[t]
+\caption{Task-specific reliability metrics (Qwen2.5-32B, multi-stage). Hallucination = proposals naming
+a technique outside the vocabulary; detection-success and full-chain are per-scenario rates;
+technique-exact and tactic accuracy are per-event. The 7B model's hallucination rate is far higher
+($6$--$10\%$).}
+\label{tab:taskspec}
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+ & Halluc. & Detect. & Full- & Tech. & Tactic \\
+Arm & rate & success & chain & exact & acc. \\
+\midrule
+A1 & 1.8\% & 100\% & 0\% & 8.3\% & 14.2\% \\
+A2 & 0.0\% & 100\% & 0\% & 4.0\% & 17.0\% \\
+A3 & 0.4\% & 100\% & 0\% & 7.7\% & 21.9\% \\
+A4 (rules) & 0.0\% & 100\% & \textbf{60\%} & \textbf{91.7\%} & \textbf{97.2\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -601,7 +638,7 @@ parent credit, with the wrong technique, or missed.}
 \centering
 \includegraphics[width=\linewidth]{fig_confusion_scale_A1.pdf}
 \caption{Exact-attribution rate per technique, 7B vs.\ 32B (arm A1). Scale does not fix the
-sibling-technique confusions.}
+technique confusions.}
 \label{fig:confscale}
 \end{figure}
 
@@ -706,7 +743,8 @@ cross-domain attack events broadly and at higher precision than deterministic ru
 multi-stage category its false-positive rate is effectively zero against the rules' $0.75$, and its
 Matthews correlation coefficient is nearly double---yet it fails at exact ATT\&CK-technique attribution,
 where hand-tuned rules dominate because they encode the answer. These attribution errors are systematic
-confusions among sibling techniques rather than random noise, and they persist as the model is scaled
+confusions among related techniques---often across ATT\&CK tactics, not only within them---rather than
+random noise, and they persist as the model is scaled
 from seven to thirty-two billion parameters: scaling improves naming only slightly and leaves event
 detection, already strong at the smaller size, essentially unchanged. Both pre-registered hypotheses
 resolved as negatives---the language model does not beat the rules on strict technique recall, and
