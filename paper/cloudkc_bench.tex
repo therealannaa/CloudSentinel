@@ -377,18 +377,10 @@ SIGMA & 0.739 & 0.433 & --- & --- & 0 \\
 \label{fig:twolens}
 \end{figure}
 
-Fig.~\ref{fig:evprec} plots each arm's event recall against its event precision. The three
-language-model arms sit high (A3 at precision 1.000), while the rule-based arm sits to the lower
-right---high recall but the lowest precision. For a security operations center, where analyst time is
-scarce, the model's high precision is the more valuable property.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{event_precision_recall.pdf}
-\caption{Event-level recall vs.\ precision per arm (multi-stage, 32B). The LLM arms are more precise
-than the rules.}
-\label{fig:evprec}
-\end{figure}
+This precision advantage is seen most clearly when the arms are placed as operating points in ROC space
+(Fig.~\ref{fig:roc}): the language-model arms sit high and to the left, near the ideal corner, while the
+rule-based arm sits far to the right at a high false-positive rate. For a security operations center,
+where analyst time is scarce, the model's high precision is the more valuable property.
 
 \subsection{Per-Category Behavior}
 Figs.~\ref{fig:reccat} and~\ref{fig:evcat} and Table~\ref{tab:percat} show the pattern is not peculiar
@@ -454,13 +446,13 @@ H2 & A1 vs A2 $F_1$  & $+0.027$ [$-0.051,0.118$]  & Fail to reject \\
 \end{table}
 
 \subsection{Model Scale: 7B versus 32B}
-Because both models ran over identical events, Table~\ref{tab:scale} and Figs.~\ref{fig:scalems},
-\ref{fig:scaleev}, and~\ref{fig:scalecat} isolate model size. A validity check appears first: the
+Because both models ran over identical events, Table~\ref{tab:scale} and Figs.~\ref{fig:scalems}
+and~\ref{fig:scalecat} isolate model size. A validity check appears first: the
 rules produce identical scores under both models (0.867), as they must. On technique-level recall
 (Fig.~\ref{fig:scalems}), scaling helps modestly---A1 rises 0.024 to 0.070 and A3 0.017 to
-0.080---but stays an order of magnitude below the rules. Fig.~\ref{fig:scaleev} is more striking: at
-the event level the two models are almost indistinguishable, with even the 7B model at $\sim$0.90
-recall and $\sim$0.90 precision. The model's useful capability, locating attack events, does not
+0.080---but stays an order of magnitude below the rules. The event level is more striking (Table~\ref{tab:scale};
+the 7B and 32B operating points nearly coincide in the ROC space of Fig.~\ref{fig:roc}): the two models
+are almost indistinguishable, with even the 7B model at $\sim$0.90 recall and $\sim$0.90 precision. The model's useful capability, locating attack events, does not
 require a large model, whereas the capability that improves with scale, exact naming, remains too
 weak to matter. Fig.~\ref{fig:scalecat} shows the modest gain is spread across categories.
 
@@ -489,12 +481,6 @@ A4 & 0.867 & 0.867 & 0.967 & 0.967 \\
 \label{fig:scalems}
 \end{figure}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{fig_model_scale_event.pdf}
-\caption{Event-level recall and precision, 7B vs.\ 32B (multi-stage): detection is scale-robust.}
-\label{fig:scaleev}
-\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -706,17 +692,41 @@ the language model is explicitly out of scope for this study.
 % ====================================================================
 \section{Conclusion}\label{sec:conc}
 We introduced CloudKC-Bench, the first open, ground-truthed benchmark for rebuilding AWS control-plane
-multi-stage kill chains, and used it to run a pre-registered, controlled four-arm comparison, with an
-independent rule-based baseline, on real AWS data. The central result is a decomposition: a mid-sized
-open language model detects cross-domain attack events at higher precision than deterministic rules,
-yet fails at exact technique attribution, with systematic confusions among related techniques. Both
-pre-registered hypotheses resolved as negatives, and scaling from seven to thirty-two billion
-parameters improved attribution only slightly while leaving detection essentially unchanged. The
-durable contribution is the benchmark itself: an open, mechanically scored artifact that turns
-unfalsifiable claims into measurable ones. Future work will close the signal gap that made both the
-rules near-optimal and a managed detector silent, by raising scenario realism toward noisy production
-telemetry, and will extend to more capable models, passive network telemetry, the sealed hold-out
-evaluation, and adversarial-evasion scenarios.
+multi-stage kill chains, and used it to run a pre-registered, controlled four-arm comparison, together
+with an independent rule-based baseline, on real AWS telemetry. The work was motivated by a simple but
+unanswered question: given heterogeneous cloud logs that share no common key, can a large language model
+correlate across them to reconstruct an attack, and does it do so better than the simpler methods
+already in use? By holding model, telemetry, and compute fixed and varying a single factor at a time,
+the benchmark turns that question from a rhetorical one into a measurable one.
+
+The central result is a decomposition rather than a winner. A mid-sized open language model detects
+cross-domain attack events broadly and at higher precision than deterministic rules---on the
+multi-stage category its false-positive rate is effectively zero against the rules' $0.75$, and its
+Matthews correlation coefficient is nearly double---yet it fails at exact ATT\&CK-technique attribution,
+where hand-tuned rules dominate because they encode the answer. These attribution errors are systematic
+confusions among sibling techniques rather than random noise, and they persist as the model is scaled
+from seven to thirty-two billion parameters: scaling improves naming only slightly and leaves event
+detection, already strong at the smaller size, essentially unchanged. Both pre-registered hypotheses
+resolved as negatives---the language model does not beat the rules on strict technique recall, and
+multi-agent decomposition adds no measurable value over a single agent while costing more---and an
+enabled managed detector produced no relevant findings, a null we report honestly rather than hide. For
+a security operations center, the practical reading is clear: a language model is a promising
+high-precision triage and correlation aid, surfacing the events that matter with few false alarms, while
+exact technique labeling is better left to rules or human analysts.
+
+Beyond any single verdict, the durable contribution of this work is the benchmark itself: an open,
+mechanically scored artifact---generator, manifests, schema, matching function, and analysis
+scripts---that converts previously unfalsifiable claims about language models in cloud security into
+measurable ones, and that will remain useful as models improve. Two threads of future work follow
+directly from our findings. The first is to close the signal gap that left both the rules near-optimal
+and the managed detector silent, by injecting benign background traffic and raising scenario realism so
+that the telemetry carries the network- and threat-intelligence-level signals a noisy production
+environment would present; this is the decisive test of whether the model's precision advantage
+survives outside a structured capture. The second is breadth: evaluating larger and more capable models,
+incorporating passive network telemetry from a dedicated sensor, running the sealed hold-out set as a
+final confirmatory check, and adding adversarial-evasion scenarios that probe robustness. We hope the
+benchmark and its honest, mixed results encourage the community to measure, rather than assume, the
+value of language models for reconstructing cloud attacks.
 
 % ====================================================================
 \begin{thebibliography}{99}
