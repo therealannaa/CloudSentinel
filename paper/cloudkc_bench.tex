@@ -503,6 +503,94 @@ of a deliberately weak comparison.
 \label{fig:cost}
 \end{figure}
 
+\subsection{Extended Performance Metrics}
+To characterize detection quality beyond recall and precision, we recover the full event-level
+confusion matrix per arm---true and false positives and negatives---and report a standard set of
+classification metrics, micro-averaged over events, in Table~\ref{tab:extended}. These metrics matter
+because the event-detection task is highly imbalanced (attack events are a small minority), a regime in
+which raw accuracy is misleading and measures such as the Matthews Correlation Coefficient (MCC),
+balanced accuracy, and the false-positive rate (FPR) are more informative.
+
+The extended metrics sharpen the central finding rather than soften it. On the MCC---a single balanced
+score for imbalanced detection---the raw language-model arm reaches $0.745$ against the rules' $0.393$,
+nearly double, and the same arm records an FPR of $0.000$ against the rules' $0.750$: the rules flag
+three of every four non-attack events, whereas the model flags essentially none. Balanced accuracy
+($0.889$ vs $0.620$) and specificity ($1.000$ vs $0.250$) tell the same story. Figure~\ref{fig:radar}
+visualizes this as a multi-metric profile: the language-model arms trace large, well-rounded polygons,
+while the rule-based arm is spiky---strong on recall but collapsing on specificity, balanced accuracy,
+and MCC. Figure~\ref{fig:roc} places each arm as an operating point in ROC space, where the
+language-model arms sit near the ideal top-left corner and the rules sit far to the right; the compact
+heatmap in Figure~\ref{fig:heat} summarizes all metrics at once.
+
+Two further metric families address reproducibility and efficiency. Because language models are
+non-deterministic, we quantify run-to-run stability as the standard deviation of technique-level recall
+across the three seeds; it is small, between $0.03$ and $0.05$ for the model arms (and zero for the
+deterministic rules), and Figure~\ref{fig:stabox} shows the full per-run distributions are tight. This
+turns the usual hand-wave about model variability into a measured, and reassuringly small, quantity.
+Finally, latency is reported as percentiles rather than a mean: the multi-agent arm has a median of
+about $13.2$ seconds and a 95th percentile of $17.0$ seconds per scenario, roughly double the
+single-agent arm (Figure~\ref{fig:latbox}), reinforcing that its extra cost buys no accuracy.
+Efficiency, measured as event recall per thousand tokens, is highest for the single-agent arm at
+$0.58$, consistent with it being the most economical language-model configuration.
+
+\begin{table}[t]
+\caption{Extended event-level metrics (Qwen2.5-32B, multi-stage, micro-averaged over events). FPR:
+lower is better; all others: higher is better.}
+\label{tab:extended}
+\centering
+\small
+\begin{tabular}{lccccccc}
+\toprule
+Arm & Rec. & Prec. & $F_1$ & FPR & Spec. & Bal.Acc. & MCC \\
+\midrule
+A1 & 0.938 & 0.889 & 0.913 & 0.211 & 0.789 & 0.864 & 0.746 \\
+A2 & 0.756 & 0.968 & 0.849 & 0.044 & 0.956 & 0.856 & 0.682 \\
+A3 & 0.778 & \textbf{1.000} & 0.875 & \textbf{0.000} & \textbf{1.000} & \textbf{0.889} & \textbf{0.745} \\
+A4 (rules) & \textbf{0.991} & 0.704 & 0.823 & 0.750 & 0.250 & 0.620 & 0.393 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\linewidth]{fig_metrics_radar.pdf}
+\caption{Multi-metric profile per arm (32B, multi-stage). The LLM arms are well-rounded; the rules
+(A4) are strong on recall but weak on specificity, balanced accuracy, and MCC.}
+\label{fig:radar}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{fig_roc_space.pdf}
+\caption{Each arm as an operating point in ROC space (multi-stage); filled markers are 32B, hollow are
+7B. The LLM arms sit near the ideal corner; the rules sit far right at FPR $0.75$.}
+\label{fig:roc}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_metrics_heatmap.pdf}
+\caption{Event-level metrics heatmap (32B, multi-stage). Green is better; for FPR, lower (redder) is
+better.}
+\label{fig:heat}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_seed_stability_box.pdf}
+\caption{Run-to-run stability: distribution of technique-level recall across scenarios and seeds
+(32B, multi-stage). Tight boxes indicate low non-determinism.}
+\label{fig:stabox}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\linewidth]{fig_latency_box.pdf}
+\caption{Per-scenario latency distribution for the LLM arms (32B, multi-stage). The multi-agent arm
+(A1) is roughly twice as slow as the single-agent arms.}
+\label{fig:latbox}
+\end{figure}
+
 % ====================================================================
 \section{Discussion}\label{sec:disc}
 The headline of this study is a \emph{decomposition} rather than a winner. On real AWS multi-stage
