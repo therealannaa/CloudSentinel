@@ -660,6 +660,30 @@ of a deliberately weak comparison.
 \label{fig:cost}
 \end{figure}
 
+\subsection{Ordering Robustness to Delivery Lag}
+Because a kill chain is an \emph{ordered} sequence, we test how sensitive the recovered ordering is to
+the cross-source delivery lags that characterize real cloud telemetry, where administrative logs arrive
+minutes late while network and compute logs arrive within seconds. For each multi-stage scenario we take
+the ground-truth candidates, shift the timestamps of one telemetry source by an offset $\Delta T$, and
+re-run the correlator, sweeping $\Delta T$ from $-900$ to $+900$ seconds. Figure~\ref{fig:tcp} reports
+the outcome. Detection recall is completely invariant to $\Delta T$---the matching function keys on
+techniques and evidence, not timestamps---so any change is a pure \emph{ordering} effect. The
+order-aware recall stays perfect within a robust band of about $\pm 120$ seconds and then degrades,
+falling to $0.84$ at the extremes. The practical implication matters: because the gap between
+CloudTrail's delivery lag ($\sim$7 minutes) and a compute log's ($\sim$30 seconds) far exceeds $120$
+seconds, realistic delivery-lag skew can misorder stages even when every event is detected. A measured
+clock model and an explicit correlation window are therefore necessary components of a faithful
+reconstruction system, not optional refinements.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_tcp_robustness.pdf}
+\caption{$\Delta T$ sensitivity on multi-stage scenarios. Detection recall (green) is invariant to a
+per-source timestamp offset; order-aware recall (blue) is perfect only within a $\pm 120$\,s band and
+degrades beyond it, isolating an ordering failure from a detection failure.}
+\label{fig:tcp}
+\end{figure}
+
 % ====================================================================
 \section{Discussion}\label{sec:disc}
 The headline of this study is a \emph{decomposition} rather than a winner. On real AWS multi-stage
