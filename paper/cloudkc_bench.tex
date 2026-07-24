@@ -7,6 +7,7 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{url}
+\usepackage[caption=false,font=footnotesize]{subfig}
 \usepackage[hidelinks]{hyperref}
 \graphicspath{{figures/}}
 \newcommand{\cmark}{\ensuremath{\checkmark}}
@@ -47,8 +48,8 @@ threat detection, Amazon Web Services, multi-agent systems, reproducibility, sec
 
 % ====================================================================
 \section{Introduction}
-Cloud computing is now the standard way organizations run their software, and its importance keeps
-growing. Gartner expects worldwide spending on public cloud services to reach US\$723.4 billion in
+Cloud computing is now the default way organizations run their software. Gartner expects worldwide
+spending on public cloud services to reach US\$723.4 billion in
 2025, up 21.5\% from US\$595.7 billion in 2024, driven in large part by the rise of
 artificial-intelligence workloads~\cite{gartner25}. As companies move not just their data and
 computing but also their identities, controls, and administrative tools into the cloud, the
@@ -65,43 +66,41 @@ escalation, and resource abuse inside cloud accounts. In every case the attack w
 strange event but a chain of steps, and the evidence for those steps was spread across several
 different logs.
 
-Because of this, researchers have begun to ask whether large language models (LLMs) can help security
-teams. Recent surveys describe a fast-growing body of work that uses these models for reading logs,
-spotting anomalies, checking for vulnerabilities, and assisting analysts~\cite{llmsurvey1,
-llmsurvey2, llmsurvey3}. The idea is appealing: a language model can read messy, mixed data and
-reason about it in plain language, possibly replacing the rigid, hand-written rules that most
-security tools rely on today. Some cloud-focused systems have already tried this, for example by
-writing detection rules from threat reports~\cite{llmcloudhunter} or by adding a language model to
-explain the alerts of a traditional detector~\cite{huntgpt}.
+This is why researchers have begun to ask whether large language models (LLMs) can help. Recent surveys
+describe a fast-growing body of work that applies them to reading logs, spotting anomalies, checking for
+vulnerabilities, and assisting analysts~\cite{llmsurvey1, llmsurvey2, llmsurvey3}. The appeal is obvious.
+A language model can read messy, mixed data and reason about it in plain language, and it might replace
+the rigid hand-written rules that most security tools still rely on. Some cloud-focused systems already
+do this: writing detection rules from threat reports~\cite{llmcloudhunter}, or adding a model to explain
+the alerts of a conventional detector~\cite{huntgpt}.
 
-Rebuilding a multi-step cloud attack, however, is much harder than labeling a single event, and it is
-exactly where the value of language-model correlation is least understood. The kill-chain idea,
-introduced by Hutchins \emph{et al.}~\cite{hutchins} and made practical for the cloud by the MITRE
-ATT\&CK framework~\cite{mitre}, describes an attack as an ordered set of stages: getting in, gaining
-privileges, evading defenses, stealing credentials, exploring, moving sideways, stealing data, and
-causing damage. In the cloud, each stage usually shows up in a different log---administrative actions
-in CloudTrail, network traffic in VPC Flow Logs, file operations in storage logs, and machine events
-in compute logs. These logs share no common key and arrive at different, unpredictable times, so
-putting the chain back together means connecting clues \emph{across} logs, not within a single
+Reconstructing a multi-step cloud attack is a much harder problem than labeling a single event, and it
+is exactly where the value of LLM correlation is least understood. The kill-chain idea, introduced by
+Hutchins \emph{et al.}~\cite{hutchins} and made practical for the cloud by the MITRE ATT\&CK
+framework~\cite{mitre}, describes an attack as an ordered set of stages: getting in, gaining privileges,
+evading defenses, stealing credentials, exploring, moving sideways, stealing data, and causing damage.
+In the cloud each stage tends to surface in a different log. Administrative actions land in CloudTrail,
+network traffic in VPC Flow Logs, file operations in storage logs, and machine events in compute logs.
+None of these logs shares a common key, and they arrive at different and unpredictable times, so
+reassembling the chain means connecting clues \emph{across} logs rather than within any single
 one~\cite{wilkens, hetfusion}.
 
-Despite the excitement, claims about language models in this area are often made without the
-safeguards that would let others check them. Results are frequently reported without fair baselines
-that separate the model's contribution from the rest of the system, without shared and clearly
-labeled datasets, and without admitting that the model's answers can change from run to run---the
-kind of pitfalls shown to inflate results across security machine learning~\cite{arp22}. On top
-of this, no public benchmark exists for rebuilding AWS control-plane kill chains with answers a
-computer can check automatically. Existing benchmarks target a different platform, a different
-task---such as malware analysis, threat-intelligence question answering, architecture modeling, or
-insider threat---or they measure how well a system \emph{writes} detection rules rather than how well
-it \emph{rebuilds} an attack~\cite{cybersoceval, excytin, orgforge, acseeval}. The community is
-therefore missing both the \emph{tool} to measure whether language-model correlation really helps and
-the \emph{method} to say which part of a system deserves the credit.
+Yet the claims in this area are often made without the safeguards that would let anyone check them.
+Results are reported without fair baselines that separate the model's contribution from the rest of the
+system, without shared and clearly labeled datasets, and without acknowledging that a model's answers
+can change from run to run. These are exactly the pitfalls shown to inflate results across security
+machine learning~\cite{arp22}. Compounding the problem, no public benchmark exists for rebuilding AWS
+control-plane kill chains with answers a computer can check automatically. The benchmarks that do exist
+target a different platform or a different task---malware analysis, threat-intelligence question
+answering, architecture modeling, insider threat---or they measure how well a system \emph{writes}
+detection rules rather than how well it \emph{rebuilds} an attack~\cite{cybersoceval, excytin, orgforge,
+acseeval}. The community is left without the tool to measure whether LLM correlation actually helps, and
+without the method to say which part of a system deserves the credit.
 
-This paper closes that gap. We present CloudKC-Bench, an open, answer-checked benchmark for rebuilding
-AWS control-plane multi-stage kill chains, and use it to run a carefully pre-planned, controlled
+This paper addresses that gap. We present CloudKC-Bench, an open, answer-checked benchmark for
+rebuilding AWS control-plane multi-stage kill chains, and use it to run a pre-registered, controlled
 comparison of four system variants---plus an independent rule-based baseline---on real AWS data,
-reporting the results honestly whether or not the language model wins. The principal contributions of
+reporting the results whether or not the language model wins. The principal contributions of
 this work are as follows.
 
 \begin{itemize}
@@ -129,20 +128,22 @@ interprets the findings and their limitations, and Section~\ref{sec:conc} conclu
 \section{Background}\label{sec:bg}
 
 \subsection{Fundamental Concepts}
-Three ideas recur throughout this paper: the data a cloud platform produces, the way attacks are
-described as staged sequences, and the recent use of language models to interpret security data. A
-cloud account constantly produces \emph{telemetry}---records of what happened to its resources. On
-Amazon Web Services, four sources carry most of the security signal: CloudTrail records
-administrative API calls, VPC Flow Logs record network connections, storage access logs record object
-operations, and compute logs record when machines are launched or terminated. Each source captures
-only one slice of behavior, and no single source contains a whole attack. Attacks themselves are
-usually described using the \emph{kill chain}~\cite{hutchins}, and the MITRE ATT\&CK
-framework~\cite{mitre} turns this idea into a catalog of concrete \emph{techniques}, each mapped to a
-tactical goal. Finally, large language models have recently been applied to security data, and broad
-surveys report fast-growing work on log analysis, anomaly detection, and analyst
-support~\cite{llmsurvey1, llmsurvey2, llmsurvey3}. Individually these concepts are mature; what
-remains largely unstudied is their combination---using a model to rebuild an ATT\&CK-mapped kill
-chain from several disconnected cloud logs at once---and whether doing so measurably helps.
+Three ideas recur throughout this paper: the data a cloud platform produces, the description of attacks
+as staged sequences, and the recent use of language models to interpret security data.
+
+A cloud account constantly produces \emph{telemetry}, the records of what happened to its resources. On
+Amazon Web Services four sources carry most of the security signal. CloudTrail records administrative
+API calls, VPC Flow Logs record network connections, storage access logs record object operations, and
+compute logs record when machines start or stop. Each source captures only one slice of behavior, and no
+single source contains a whole attack. Attacks, in turn, are usually described with the \emph{kill
+chain}~\cite{hutchins}; the MITRE ATT\&CK framework~\cite{mitre} turns that idea into a catalog of
+concrete \emph{techniques}, each mapped to a tactical goal. Language models have recently joined this
+picture, with broad surveys reporting fast-growing work on log analysis, anomaly detection, and analyst
+support~\cite{llmsurvey1, llmsurvey2, llmsurvey3}.
+
+Individually these concepts are mature. What remains largely unstudied is their combination: using a
+model to rebuild an ATT\&CK-mapped kill chain from several disconnected cloud logs at once, and whether
+doing so measurably helps.
 
 \subsection{Existing Approaches}
 Prior work on turning telemetry into detections falls into four families, and comparing them shows why
@@ -321,8 +322,8 @@ measures averaged to a single value per scenario before any aggregation, and the
 never pooled. For each reported quantity we give a bootstrap $95\%$ confidence interval (percentile
 method over resampled scenarios), and for the two confirmatory tests we add a paired effect size
 (Cohen's $d_z$) and a paired permutation $p$-value, corrected across the two tests with the
-Holm--Bonferroni procedure. This protocol is what lets us report negative results---H1 unsupported, H2
-not rejected---as findings rather than as failures to reach significance.
+Holm--Bonferroni procedure. This protocol is what lets us report the negative results (H1 unsupported,
+H2 not rejected) as findings rather than as failures to reach significance.
 
 % ====================================================================
 \section{Implementation}\label{sec:impl}
@@ -382,6 +383,12 @@ whereas the rules reach high event recall (0.967) but far lower event precision 
 model flags an event it is almost always right, more reliably than the rules, yet it usually attaches
 the wrong technique. The bottleneck is technique attribution, not cross-domain event detection.
 
+One caveat governs how the strict-lens numbers should be read, and we raise it here rather than bury it.
+The rules reach $0.867$ technique recall because their signatures effectively invert our scenario
+generator, recovering the exact sub-technique each scenario was built to encode
+(Section~\ref{sec:disc}). The strict lens therefore flatters any method that has encoded the answer key,
+so we treat the event-level lens as the primary comparison throughout.
+
 \begin{table}[t]
 \caption{Multi-stage kill chains, two scoring lenses (Qwen2.5-32B, real-AWS, $n{=}15$, 3 seeds).}
 \label{tab:twolens}
@@ -411,21 +418,20 @@ This precision advantage is seen most clearly when the arms are placed as operat
 rule-based arm sits far to the right at a high false-positive rate. For a security operations center,
 where analyst time is scarce, the model's high precision is the more valuable property.
 
-The richer classification metrics defined above, reported in Table~\ref{tab:extended}, sharpen this
-finding rather than soften it. On the MCC---the single balanced score for imbalanced detection---the raw
+The richer classification metrics defined above, reported in Table~\ref{tab:extended}, reinforce this
+finding. On the MCC---the single balanced score for imbalanced detection---the raw
 language-model arm reaches $0.745$ against the rules' $0.393$, nearly double, and it records an FPR of
 $0.000$ against the rules' $0.750$: the rules flag three of every four non-attack events, whereas the
 model flags essentially none. Balanced accuracy ($0.889$ vs $0.620$) and specificity ($1.000$ vs
-$0.250$) tell the same story. Figure~\ref{fig:radar} visualizes this as a multi-metric profile in which
-the language-model arms trace large, well-rounded polygons while the rule-based arm is
-spiky---strong on recall but collapsing on specificity, balanced accuracy, and MCC---and the heatmap in
-Figure~\ref{fig:heat} summarizes every metric at once.
+$0.250$) tell the same story. The heatmap in Figure~\ref{fig:heat} shows every metric at once: the
+language-model arms hold up across the board, while the rule-based arm is strong on recall but collapses
+on specificity, balanced accuracy, and MCC.
 
 Two further metric families address reproducibility and efficiency. Because language models are
 non-deterministic, we quantify run-to-run stability as the standard deviation of technique-level recall
 across the three seeds; it is small, between $0.03$ and $0.05$ for the model arms (and zero for the
-deterministic rules), and Figure~\ref{fig:stabox} shows the per-run distributions are tight, turning the
-usual hand-wave about model variability into a measured, and reassuringly small, quantity. Latency is
+deterministic rules), and Figure~\ref{fig:stabox} shows the per-run distributions are tight, which
+replaces the usual hand-waving about model variability with a small, measured value. Latency is
 reported as percentiles rather than a mean: the multi-agent arm has a median of about $13.2$ seconds and
 a 95th-percentile of $17.0$ seconds per scenario, roughly double the single-agent arm
 (Figure~\ref{fig:latbox}), while event recall per thousand tokens is highest for the single-agent arm at
@@ -449,14 +455,6 @@ A4 (rules) & 0.823 & 0.750 & 0.250 & 0.620 & 0.393 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.86\linewidth]{fig_metrics_radar.pdf}
-\caption{Multi-metric profile per arm (32B, multi-stage). The LLM arms are well-rounded; the rules
-(A4) are strong on recall but weak on specificity, balanced accuracy, and MCC.}
-\label{fig:radar}
-\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -491,7 +489,7 @@ better.}
 \end{figure}
 
 \subsection{Per-Category Behavior}
-Figs.~\ref{fig:reccat} and~\ref{fig:evcat} and Table~\ref{tab:percat} show the pattern is not peculiar
+Figure~\ref{fig:percat_fig} and Table~\ref{tab:percat} show the pattern is not peculiar
 to multi-stage attacks. The rule-based arm dominates technique-level recall in every category, while
 the model arms stay between roughly 0.10 and 0.17. At the event level, the model arms recover most
 true attack events across every attack category (recall $\sim$0.76--0.99); the benign category is
@@ -499,16 +497,13 @@ empty by construction, and it is there that the rules' over-triggering is most v
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.82\textwidth]{recall_by_category.pdf}
-\caption{Technique-level recall by arm across the five categories (32B, real-AWS).}
-\label{fig:reccat}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.82\textwidth]{percategory_event.pdf}
-\caption{Event-level recall by arm across the five categories (32B, real-AWS).}
-\label{fig:evcat}
+\subfloat[Technique-level recall.]{\includegraphics[width=0.49\textwidth]{recall_by_category.pdf}\label{fig:reccat}}
+\hfil
+\subfloat[Event-level recall.]{\includegraphics[width=0.49\textwidth]{percategory_event.pdf}\label{fig:evcat}}
+\caption{Recall by arm across the five categories (32B, real-AWS): (a) technique-level and (b)
+event-level. The rules dominate technique-level recall everywhere; the model arms recover most true
+attack events at the event level.}
+\label{fig:percat_fig}
 \end{figure*}
 
 \begin{table}[t]
@@ -554,8 +549,8 @@ H2 & A1 vs A2 $F_1$  & $+0.027$ [$-0.051,0.118$]  & Fail to reject \\
 \end{table}
 
 \subsection{Model Scale: 7B versus 32B}
-Because both models ran over identical events, Table~\ref{tab:scale} and Figs.~\ref{fig:scalems}
-and~\ref{fig:scalecat} isolate model size. A validity check appears first: the
+Because both models ran over identical events, Table~\ref{tab:scale} and Figure~\ref{fig:scale_fig}
+isolate model size. A validity check appears first: the
 rules produce identical scores under both models (0.867), as they must. On technique-level recall
 (Fig.~\ref{fig:scalems}), scaling helps modestly---A1 rises 0.024 to 0.070 and A3 0.017 to
 0.080---but stays an order of magnitude below the rules. The event level is more striking (Table~\ref{tab:scale};
@@ -584,17 +579,11 @@ A4 & 0.867 & 0.867 & 0.967 & 0.967 \\
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{fig_model_scale_multistage.pdf}
-\caption{Technique-level recall per arm, 7B vs.\ 32B on identical real-AWS telemetry.}
-\label{fig:scalems}
-\end{figure}
-
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{fig_model_scale_percategory.pdf}
-\caption{Technique-level recall by category for arm A1, 7B vs.\ 32B.}
-\label{fig:scalecat}
+\subfloat[Per arm, multi-stage.]{\includegraphics[width=0.9\linewidth]{fig_model_scale_multistage.pdf}\label{fig:scalems}}\\
+\subfloat[By category, arm A1.]{\includegraphics[width=0.9\linewidth]{fig_model_scale_percategory.pdf}\label{fig:scalecat}}
+\caption{Technique-level recall, 7B vs.\ 32B on identical real-AWS telemetry: (a) per arm on the
+multi-stage category and (b) by category for arm A1. Scaling helps naming only slightly.}
+\label{fig:scale_fig}
 \end{figure}
 
 \subsection{Where Attribution Breaks}
@@ -704,23 +693,27 @@ degrades beyond it, isolating an ordering failure from a detection failure.}
 
 % ====================================================================
 \section{Discussion}\label{sec:disc}
-The headline of this study is a \emph{decomposition} rather than a winner. On real AWS multi-stage
-kill chains, a mid-sized open language model performs cross-domain attack-event detection at higher
-precision than deterministic rules, yet fails at exact technique attribution. The natural reading for
-practice is that these capabilities belong to different tools: a model is well suited to
-high-precision triage, while exact labeling is better left to rules or a human analyst. The model's
-precision advantage has an intuitive cause---it reasons about an event in context and can decline to
-flag a lone action a rule would trip on---which is also why removing the pre-filter improves its
-recall.
+This study does not crown a winner; it separates two capabilities that are usually treated as one. On
+real AWS multi-stage kill chains, a mid-sized open language model detects cross-domain attack events at
+higher precision than deterministic rules but fails at exact technique attribution. For practitioners
+the implication is that the two capabilities belong to different tools: the model is well suited to
+high-precision triage, and exact labeling is better left to rules or a human analyst. The model's
+precision advantage has a simple cause. It reasons about an event in context and can decline to flag a
+lone action that a rule would trip on, which is also why removing the pre-filter improves its recall.
 
-The rules dominate the strict metric for a structural reason: their signatures are effectively the
-inverse of the scenario generator, so they recover the exact sub-technique each scenario encodes, and
-executing against real AWS did not dissolve this advantage because the captured telemetry is still the
-structured API calls the benchmark issues. The strict metric therefore rewards any method that encodes
-the answer key, which is why we lead with event-level detection; a decisive comparison would require
-noisy production telemetry in which no static rule can invert the data. Practically, multi-agent
-decomposition should not be adopted, the pre-filter is a tunable cost-versus-recall knob, and because
-detection is scale-insensitive a deployment wanting only triage can use a small model.
+One limitation shapes how the strict-metric results should be read, and we state it plainly. The
+rule-based arm dominates technique-level recall not because rules are inherently better attributors but
+because its signatures are effectively the inverse of the scenario generator: they recover the exact
+sub-technique each scenario was built to encode. Executing against real AWS does not dissolve this
+advantage, because the captured telemetry is still the structured API calls the benchmark issues. The
+strict metric thus rewards any method that has encoded the answer key, and cannot by itself settle
+whether a language model or a rule set is the better attributor. This is why we lead with the
+event-level lens, and why the decisive test is left for future work: it needs noisy production telemetry
+in which no static rule can invert the data.
+
+Read with that caveat, three practical points hold. Multi-agent decomposition is not worth its cost.
+The pre-filter is a tunable cost-versus-recall knob rather than a free optimization. And because
+detection barely moves with model size, a deployment that needs only triage can run a small model.
 
 These interpretations are subject to several threats to validity, which we examine systematically in
 Section~\ref{sec:threats}.
@@ -736,22 +729,22 @@ hold-out set authored before the system is finalized and evaluated only once, an
 real AWS account rather than a simulator alone. Even so, a single sandbox account and one model family
 bound the generality of the scaling conclusion, which we present as indicative rather than definitive.
 
-\emph{Construct validity} concerns whether the metrics measure what we intend. The rule-based arm's
-near-optimal technique-level recall is partly an artifact of the benchmark, because its signatures
-effectively invert the scenario generator; we address this by reporting two complementary lenses and
-leading with event-level detection, and by including an independent community rule baseline that is not
-tuned to our scenarios. The bespoke matching function is a further construct risk, mitigated by leading
-with standard classification metrics (Section~\ref{sec:results}) and by publishing the function so that
-it can be independently inspected.
+\emph{Construct validity} asks whether the metrics measure what we intend. As discussed above, the
+rule-based arm's near-optimal technique-level recall is partly an artifact of the benchmark, because its
+signatures invert the scenario generator. We address this by reporting two complementary lenses, leading
+with event-level detection, and including an independent community rule baseline that is not tuned to our
+scenarios. The bespoke matching function is a further construct risk; we mitigate it by leading with
+standard classification metrics (Section~\ref{sec:results}) and by publishing the function for
+independent inspection.
 
 \emph{Internal validity} concerns confounds within the experiment. The chief internal threat is
 language-model non-determinism, which can render results irreproducible; we pin a single model version,
-average over three seeds, and report the measured run-to-run variance, which is small. Holding model,
-telemetry, and compute fixed across arms ensures that any score difference is attributable to the single
-factor under test.
+average over three seeds, and report the measured run-to-run variance, which is small. Because every arm
+sees identical model, telemetry, and compute, any score difference is attributable to the one factor
+under test.
 
-\emph{Statistical conclusion validity} concerns whether our inferences are sound given the sample. Per-
-category sample sizes are small, so an a-priori power analysis restricts confirmatory claims to the two
+\emph{Statistical conclusion validity} turns on whether our inferences are sound given the sample size.
+Per-category sample sizes are small, so an a-priori power analysis restricts confirmatory claims to the two
 pre-registered primary tests, corrected with the Holm--Bonferroni procedure, and treats all other
 comparisons as descriptive, reported with effect sizes and bootstrap confidence intervals rather than
 family-wise significance. These safeguards directly answer the evaluation pitfalls catalogued for
@@ -761,14 +754,14 @@ security machine learning~\cite{arp22}.
 multi-day baseline and collected its findings over the real-AWS run, but it produced no findings mapping
 to any emulated technique. We interpret this as a construct limitation of the telemetry rather than of
 the detector: our executed-API scenarios reproduce the control-plane shape of attacks but not the
-network- and threat-intelligence-level signals such a detector consumes. We therefore report it as an
-honest null and retain the community rule set as the scored external baseline; raising scenario realism
+network- and threat-intelligence-level signals such a detector consumes. We therefore report it as a
+null result and retain the community rule set as the scored external baseline; raising scenario realism
 to emit those signals is future work.
 
 \emph{Reproducibility} concerns whether the study can be repeated. Model drift and deprecation threaten
-long-term reproducibility, mitigated by version pinning and the release of the full
-artifact---generator, manifests, schema, matching function, and analysis scripts. Adversarial evasion of
-the language model is explicitly out of scope for this study.
+long-term reproducibility; we mitigate them by pinning model versions and releasing the complete
+artifact described in the availability statement. Adversarial evasion of the language model is out of
+scope for this study.
 
 % ====================================================================
 \section{Conclusion}\label{sec:conc}
@@ -777,11 +770,11 @@ multi-stage kill chains, and used it to run a pre-registered, controlled four-ar
 with an independent rule-based baseline, on real AWS telemetry. The work was motivated by a simple but
 unanswered question: given heterogeneous cloud logs that share no common key, can a large language model
 correlate across them to reconstruct an attack, and does it do so better than the simpler methods
-already in use? By holding model, telemetry, and compute fixed and varying a single factor at a time,
-the benchmark turns that question from a rhetorical one into a measurable one.
+already in use? By fixing the model, telemetry, and compute budget and varying one factor at a time,
+the benchmark makes that question measurable instead of rhetorical.
 
-The central result is a decomposition rather than a winner. A mid-sized open language model detects
-cross-domain attack events broadly and at higher precision than deterministic rules---on the
+The central result separates two capabilities rather than declaring a winner. A mid-sized open language
+model detects cross-domain attack events broadly and at higher precision than deterministic rules---on the
 multi-stage category its false-positive rate is effectively zero against the rules' $0.75$, and its
 Matthews correlation coefficient is nearly double---yet it fails at exact ATT\&CK-technique attribution,
 where hand-tuned rules dominate because they encode the answer. These attribution errors are systematic
@@ -791,15 +784,14 @@ from seven to thirty-two billion parameters: scaling improves naming only slight
 detection, already strong at the smaller size, essentially unchanged. Both pre-registered hypotheses
 resolved as negatives---the language model does not beat the rules on strict technique recall, and
 multi-agent decomposition adds no measurable value over a single agent while costing more---and an
-enabled managed detector produced no relevant findings, a null we report honestly rather than hide. For
+enabled managed detector produced no relevant findings, a null we report rather than omit. For
 a security operations center, the practical reading is clear: a language model is a promising
 high-precision triage and correlation aid, surfacing the events that matter with few false alarms, while
 exact technique labeling is better left to rules or human analysts.
 
-Beyond any single verdict, the durable contribution of this work is the benchmark itself: an open,
-mechanically scored artifact---generator, manifests, schema, matching function, and analysis
-scripts---that converts previously unfalsifiable claims about language models in cloud security into
-measurable ones, and that will remain useful as models improve. Two threads of future work follow
+Beyond any single result, the lasting contribution is the benchmark itself: an open, mechanically
+scored artifact that turns previously unfalsifiable claims about language models in cloud security into
+measurable ones, and that should remain useful as models improve. Two threads of future work follow
 directly from our findings. The first is to close the signal gap that left both the rules near-optimal
 and the managed detector silent, by injecting benign background traffic and raising scenario realism so
 that the telemetry carries the network- and threat-intelligence-level signals a noisy production
@@ -807,8 +799,8 @@ environment would present; this is the decisive test of whether the model's prec
 survives outside a structured capture. The second is breadth: evaluating larger and more capable models,
 incorporating passive network telemetry from a dedicated sensor, running the sealed hold-out set as a
 final confirmatory check, and adding adversarial-evasion scenarios that probe robustness. We hope the
-benchmark and its honest, mixed results encourage the community to measure, rather than assume, the
-value of language models for reconstructing cloud attacks.
+benchmark and its mixed results encourage the community to measure, rather than assume, what language
+models contribute to reconstructing cloud attacks.
 
 % ====================================================================
 \section*{Reproducibility and Availability}
@@ -827,36 +819,36 @@ without re-incurring cloud cost.
 % ====================================================================
 \begin{thebibliography}{99}
 \bibitem{gartner25} Gartner, ``Gartner Forecasts Worldwide Public Cloud End-User Spending to Total \$723 Billion in 2025,'' press release, Nov.\ 2024.
-\bibitem{gartner99} Gartner, ``Through 2025, 99\% of cloud security failures will be the customer's fault,'' cloud-security guidance. [Online; verify primary report].
+\bibitem{gartner99} Gartner, ``Is the Cloud Secure?,'' Oct.\ 2019. [Online]. Available: gartner.com/smarterwithgartner/is-the-cloud-secure
 \bibitem{capitalone} B. Krebs, ``What We Can Learn from the Capital One Hack,'' KrebsOnSecurity, 2019.
 \bibitem{scarleteel} Sysdig Threat Research Team, ``SCARLETEEL: Operation Targeting AWS Fargate and Kubernetes,'' 2023.
 \bibitem{teamtnt} Cado Security, ``TeamTNT Cryptojacking Worm Targeting AWS Credentials,'' 2020.
-\bibitem{llmsurvey1} ``Exploring the Role of Large Language Models in Cybersecurity: A Systematic Survey,'' arXiv:2504.15622, 2025.
-\bibitem{llmsurvey2} ``Large Language Models in Cybersecurity: A Survey of Applications, Vulnerabilities, and Defense Techniques,'' \emph{AI} (MDPI), vol.\ 6, no.\ 9, art.\ 216, 2025.
-\bibitem{llmsurvey3} ``LLM-based Event Log Analysis Techniques: A Survey,'' arXiv:2502.00677, 2025.
+\bibitem{llmsurvey1} S. Tian \emph{et al.}, ``Exploring the Role of Large Language Models in Cybersecurity: A Systematic Survey,'' arXiv:2504.15622, 2025.
+\bibitem{llmsurvey2} N. O. Jaffal, M. Alkhanafseh, and D. Mohaisen, ``Large Language Models in Cybersecurity: A Survey of Applications, Vulnerabilities, and Defense Techniques,'' \emph{AI} (MDPI), vol.\ 6, no.\ 9, art.\ 216, 2025.
+\bibitem{llmsurvey3} S. Akhtar, S. Khan, and S. Parkinson, ``LLM-based Event Log Analysis Techniques: A Survey,'' arXiv:2502.00677, 2025.
 \bibitem{llmcloudhunter} Y. Schwartz \emph{et al.}, ``LLMCloudHunter: Harnessing LLMs for Automated Extraction of Detection Rules from Cloud-Based CTI,'' in \emph{Proc.\ ACM Web Conf.\ (WWW)}, 2025.
 \bibitem{huntgpt} T. Ali and P. Kostakos, ``HuntGPT: Integrating ML-Based Anomaly Detection and Explainable AI with LLMs,'' arXiv:2309.16021, 2023.
 \bibitem{hutchins} E. M. Hutchins, M. J. Cloppert, and R. M. Amin, ``Intelligence-Driven Computer Network Defense Informed by Analysis of Adversary Campaigns and Intrusion Kill Chains,'' Lockheed Martin, 2011.
 \bibitem{mitre} The MITRE Corporation, ``MITRE ATT\&CK for Cloud (IaaS) Matrix.'' [Online]. Available: attack.mitre.org
 \bibitem{wilkens} F. Wilkens \emph{et al.}, ``Multi-Stage Attack Detection via Kill Chain State Machines,'' in \emph{Proc.\ 3rd Wksp.\ Cyber-Security Arms Race (CYSARM)}, ACM, 2021.
-\bibitem{hetfusion} ``Attack Scenario Reconstruction via Fusing Heterogeneous Threat Intelligence,'' \emph{Computers \& Security}, Elsevier, 2023.
-\bibitem{cybersoceval} Deason \emph{et al.}, ``CyberSOCEval: Benchmarking LLMs for Malware Analysis and Threat Intelligence Reasoning,'' arXiv:2509.20166, 2025.
-\bibitem{excytin} Wu \emph{et al.}, ``ExCyTIn-Bench: Benchmarking LLM Agents on Cyber Threat Investigation,'' arXiv:2507.14201, 2025.
-\bibitem{orgforge} ``OrgForge-IT: A Verifiable Synthetic Benchmark for LLM-Based Insider Threat Detection,'' arXiv:2603.22499, 2026.
-\bibitem{acseeval} ``ACSE-Eval: Can LLMs Threat Model Real-World Cloud Infrastructure?,'' arXiv:2505.11565, 2025.
+\bibitem{hetfusion} X. Zang, J. Gong, X. Zhang, and G. Li, ``Attack Scenario Reconstruction via Fusing Heterogeneous Threat Intelligence,'' \emph{Computers \& Security}, vol.\ 133, art.\ 103420, Elsevier, 2023.
+\bibitem{cybersoceval} L. Deason \emph{et al.}, ``CyberSOCEval: Benchmarking LLMs for Malware Analysis and Threat Intelligence Reasoning,'' arXiv:2509.20166, 2025.
+\bibitem{excytin} Y. Wu \emph{et al.}, ``ExCyTIn-Bench: Benchmarking LLM Agents on Cyber Threat Investigation,'' arXiv:2507.14201, 2025.
+\bibitem{orgforge} J. Flynt, ``OrgForge-IT: A Verifiable Synthetic Benchmark for LLM-Based Insider Threat Detection,'' arXiv:2603.22499, 2026.
+\bibitem{acseeval} S. Munshi, S. Pathak, S. Ghatode, T. Priyadarshini, D. Chandramouleeswaran, and A. Rana, ``ACSE-Eval: Can LLMs Threat Model Real-World Cloud Infrastructure?,'' arXiv:2505.11565, 2025.
 \bibitem{provsurvey} M. U. Rehman \emph{et al.}, ``Provenance-based Intrusion Detection Systems: A Survey,'' \emph{ACM Computing Surveys}, 2022.
-\bibitem{tbdetector} ``TBDetector: Transformer-Based Detector for Advanced Persistent Threats with Provenance Graph,'' arXiv:2304.02838, 2023.
+\bibitem{tbdetector} N. Wang \emph{et al.}, ``TBDetector: Transformer-Based Detector for Advanced Persistent Threats with Provenance Graph,'' arXiv:2304.02838, 2023.
 \bibitem{sigma} SigmaHQ, ``Sigma --- Generic Signature Format for SIEM Systems.'' [Online]. Available: github.com/SigmaHQ/sigma
 \bibitem{mukherjee} A. Mukherjee and M. Kantarcioglu, ``Provenance-Based Agentic Threat Hunting with RAG and Chain-of-Thought,'' 2025.
 \bibitem{stratus} Datadog, ``Stratus Red Team: Adversary Emulation for the Cloud.'' [Online]. Available: github.com/DataDog/stratus-red-team
 \bibitem{cloudgoat} Rhino Security Labs, ``CloudGoat: Vulnerable-by-Design AWS Environment.'' [Online]. Available: github.com/RhinoSecurityLabs/cloudgoat
-\bibitem{qwen} Qwen Team, ``Qwen2.5 Technical Report,'' 2024. [Verify arXiv ID].
+\bibitem{qwen} Qwen Team, ``Qwen2.5 Technical Report,'' arXiv:2412.15115, 2024.
 \bibitem{arp22} D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro, and K. Rieck, ``Dos and Don'ts of Machine Learning in Computer Security,'' in \emph{Proc.\ 31st USENIX Security Symp.}, 2022.
-\bibitem{aisecevent22} ``A Survey on Artificial Intelligence Techniques for Security Event Correlation: Models, Challenges, and Opportunities,'' \emph{Artificial Intelligence Review} (Springer), 2022.
-\bibitem{maac} ``MAAC: Novel Alert Correlation Method to Detect Multi-step Attack,'' arXiv:2011.07793, 2020.
-\bibitem{graphweaver} ``GraphWeaver: Billion-Scale Cybersecurity Incident Correlation,'' arXiv:2406.01842, 2024.
-\bibitem{secure_bench} ``SECURE: Benchmarking Large Language Models for Cybersecurity Advisory,'' arXiv:2405.20441, 2024.
-\bibitem{llmbenchsurvey} ``A Survey on Large Language Model Benchmarks,'' arXiv:2508.15361, 2025.
+\bibitem{aisecevent22} D. Levshun and I. Kotenko, ``A Survey on Artificial Intelligence Techniques for Security Event Correlation: Models, Challenges, and Opportunities,'' \emph{Artificial Intelligence Review}, vol.\ 56, no.\ 8, pp.\ 8547--8590, Springer, 2023.
+\bibitem{maac} X. Wang, X. Gong, L. Yu, and J. Liu, ``MAAC: Novel Alert Correlation Method to Detect Multi-step Attack,'' arXiv:2011.07793, 2020.
+\bibitem{graphweaver} S. Freitas and A. Gharib, ``GraphWeaver: Billion-Scale Cybersecurity Incident Correlation,'' arXiv:2406.01842, 2024.
+\bibitem{secure_bench} D. Bhusal \emph{et al.}, ``SECURE: Benchmarking Large Language Models for Cybersecurity Advisory,'' arXiv:2405.20441, 2024.
+\bibitem{llmbenchsurvey} S. Ni \emph{et al.}, ``A Survey on Large Language Model Benchmarks,'' arXiv:2508.15361, 2025.
 \end{thebibliography}
 
 \end{document}
