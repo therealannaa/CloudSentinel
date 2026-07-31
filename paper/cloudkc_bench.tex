@@ -35,8 +35,8 @@ published, deterministic matching function. Using the benchmark we run a pre-reg
 ablation (multi-agent LLM, single-agent LLM, single agent without a pre-filter, and a rules-only
 correlator) plus an independent community Sigma baseline, holding model, telemetry, and compute
 fixed. On a real-AWS run with Qwen2.5-32B, the LLM detects cross-domain attack \emph{events} at
-higher precision than the rules (up to $1.00$ vs $0.65$ on multi-stage kill chains) but is markedly
-worse at exact ATT\&CK-\emph{technique} attribution (recall $\sim$0.12 vs $0.87$); multi-agent
+higher precision than the rules (up to $1.00$ vs.\ $0.65$ on multi-stage kill chains) but is markedly
+worse at exact ATT\&CK-\emph{technique} attribution (recall $\sim$0.12 vs.\ $0.87$); multi-agent
 decomposition adds no measurable value over a single agent. All artifacts are released for
 independent replication.
 \end{abstract}
@@ -300,10 +300,10 @@ Because naming a technique and simply finding an attack are different skills, ev
 under two lenses. The \emph{technique-level} lens is the strict function above. The \emph{event-level}
 lens is technique-blind: if $G$ is the set of ground-truth attack events and $P$ the set an arm
 flagged, then
-\begin{equation}
-\mathrm{event\_recall}=\frac{|P\cap G|}{|G|},\qquad
-\mathrm{event\_precision}=\frac{|P\cap G|}{|P|}.
-\end{equation}
+\begin{align}
+\mathrm{event\_recall}&=\frac{|P\cap G|}{|G|},\\
+\mathrm{event\_precision}&=\frac{|P\cap G|}{|P|}.
+\end{align}
 Reporting both separates \emph{finding} an attack from \emph{labeling} it.
 
 \subsection{Pre-Registration and Statistical Protocol}
@@ -311,7 +311,7 @@ To keep the study honest, the research question, the hypotheses, and every stati
 fixed in writing \emph{before any result was computed}. Two confirmatory hypotheses are pre-registered
 on the multi-stage category, the primary test bed: H1 asks whether the best language-model arm exceeds
 the rules on technique-level recall by a pre-set margin, and H2 asks whether the multi-agent arm differs
-from the single agent on F1 by more than a small equivalence band. An a-priori power analysis (paired
+from the single agent on $F_1$ by more than a small equivalence band. An a priori power analysis (paired
 design, $\alpha=0.05$, power $0.80$) showed that, after correcting for multiple comparisons across the
 full grid of arms and categories, only very large effects are detectable at the frozen sample size; we
 therefore pre-registered exactly \emph{two} confirmatory tests and treat every other comparison as
@@ -422,19 +422,19 @@ The richer classification metrics defined above, reported in Table~\ref{tab:exte
 finding. On the MCC---the single balanced score for imbalanced detection---the raw
 language-model arm reaches $0.745$ against the rules' $0.393$, nearly double, and it records an FPR of
 $0.000$ against the rules' $0.750$: the rules flag three of every four non-attack events, whereas the
-model flags essentially none. Balanced accuracy ($0.889$ vs $0.620$) and specificity ($1.000$ vs
-$0.250$) tell the same story. The heatmap in Figure~\ref{fig:heat} shows every metric at once: the
+model flags essentially none. Balanced accuracy ($0.889$ vs.\ $0.620$) and specificity ($1.000$ vs.\
+$0.250$) tell the same story. The heatmap in Fig.~\ref{fig:heat} shows every metric at once: the
 language-model arms hold up across the board, while the rule-based arm is strong on recall but collapses
 on specificity, balanced accuracy, and MCC.
 
 Two further metric families address reproducibility and efficiency. Because language models are
 non-deterministic, we quantify run-to-run stability as the standard deviation of technique-level recall
 across the three seeds; it is small, between $0.03$ and $0.05$ for the model arms (and zero for the
-deterministic rules), and Figure~\ref{fig:stabox} shows the per-run distributions are tight, which
+deterministic rules), and Fig.~\ref{fig:stabox} shows the per-run distributions are tight, which
 replaces the usual hand-waving about model variability with a small, measured value. Latency is
 reported as percentiles rather than a mean: the multi-agent arm has a median of about $13.2$ seconds and
 a 95th-percentile of $17.0$ seconds per scenario, roughly double the single-agent arm
-(Figure~\ref{fig:latbox}), while event recall per thousand tokens is highest for the single-agent arm at
+(Fig.~\ref{fig:latbox}), while event recall per thousand tokens is highest for the single-agent arm at
 $0.58$, the most economical language-model configuration.
 
 \begin{table}[t]
@@ -530,7 +530,7 @@ A4 & single-domain & 1.000 [1.000,1.000] & 1.000 & 0.452 \\
 \subsection{The Two Primary Hypotheses}
 Table~\ref{tab:hyp} states both pre-registered outcomes, and both resolve as negatives. The best
 model arm trails the rules by a mean of $-0.750$ ($d_z=-3.91$, $p<0.001$, Holm-corrected), so H1 is
-\emph{not supported}. The multi-agent arm differs from the single-agent arm by only $+0.027$ in F1
+\emph{not supported}. The multi-agent arm differs from the single-agent arm by only $+0.027$ in $F_1$
 ($p=0.59$), so we \emph{fail to reject} H2: multi-agent decomposition adds no measurable value.
 
 \begin{table}[t]
@@ -549,7 +549,7 @@ H2 & A1 vs A2 $F_1$  & $+0.027$ [$-0.051,0.118$]  & Fail to reject \\
 \end{table}
 
 \subsection{Model Scale: 7B versus 32B}
-Because both models ran over identical events, Table~\ref{tab:scale} and Figure~\ref{fig:scale_fig}
+Because both models ran over identical events, Table~\ref{tab:scale} and Fig.~\ref{fig:scale_fig}
 isolate model size. A validity check appears first: the
 rules produce identical scores under both models (0.867), as they must. On technique-level recall
 (Fig.~\ref{fig:scalems}), scaling helps modestly---A1 rises 0.024 to 0.070 and A3 0.017 to
@@ -611,6 +611,27 @@ only $4$--$8\%$ of attack events but a same-tactic technique on $14$--$22\%$. Th
 a limited family-level understanding; but because tactic accuracy still trails the rules' $97\%$ by a
 wide margin, the model's difficulty is a broad attribution weakness, not merely within-tactic sibling
 confusion.
+
+We define these rates formally over the $N$ scenarios of a category. For scenario $k$, let $M_k$ be its
+ground-truth stages ($n_k=|M_k|$) and $G_k$ its true attack events; let the arm report the stage set
+$R_k$, each $r_j$ carrying a technique label $\hat t_j$, flag the event set $P_k$, and match
+$\mathrm{TP}_k$ stages under the function of Section~\ref{sec:framework}. Writing $V$ for the closed
+technique vocabulary supplied in the prompt,
+\begin{align}
+\mathrm{DetRate}  &= \frac{1}{N}\sum_{k=1}^{N}\mathbf{1}\!\left[\,P_k\cap G_k\neq\varnothing\,\right],
+  \label{eq:detrate}\\[2pt]
+\mathrm{FullRate} &= \frac{1}{N}\sum_{k=1}^{N}\mathbf{1}\!\left[\,\mathrm{TP}_k=n_k\,\right],
+  \label{eq:fullrate}\\[2pt]
+\mathrm{HalRate}  &= \frac{\sum_{k=1}^{N}\bigl|\{\,r_j\in R_k:\hat t_j\notin V\,\}\bigr|}
+  {\sum_{k=1}^{N}\lvert R_k\rvert},
+  \label{eq:halrate}
+\end{align}
+where $\mathbf{1}[\cdot]$ is the indicator function. The two success rates are per-scenario indicator
+averages---detection-success~\eqref{eq:detrate} counts a scenario as solved when the arm flags any true
+attack event, and full-chain~\eqref{eq:fullrate} only when every ground-truth stage is matched---while
+the hallucination rate~\eqref{eq:halrate} is micro-averaged over all proposed stages. The
+technique-exact and tactic accuracies are the analogous per-event fractions of attack events assigned,
+respectively, the correct technique or a technique sharing its ATT\&CK tactic.
 
 \begin{table}[t]
 \caption{Task-specific reliability metrics (Qwen2.5-32B, multi-stage). Hallucination = proposals naming
@@ -744,7 +765,7 @@ sees identical model, telemetry, and compute, any score difference is attributab
 under test.
 
 \emph{Statistical conclusion validity} turns on whether our inferences are sound given the sample size.
-Per-category sample sizes are small, so an a-priori power analysis restricts confirmatory claims to the two
+Per-category sample sizes are small, so an a priori power analysis restricts confirmatory claims to the two
 pre-registered primary tests, corrected with the Holm--Bonferroni procedure, and treats all other
 comparisons as descriptive, reported with effect sizes and bootstrap confidence intervals rather than
 family-wise significance. These safeguards directly answer the evaluation pitfalls catalogued for
