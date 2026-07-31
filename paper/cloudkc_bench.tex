@@ -245,6 +245,47 @@ manifest reaches only the scorer, never the arms (the answer-key boundary).}
 \label{fig:system}
 \end{figure*}
 
+\subsection{Problem Formalization}
+We state the benchmark and the study it enables in one formal frame; the constructions of the following
+subsections are instances of its components. The benchmark is the tuple
+\begin{equation}
+\mathcal{B} = (\mathcal{Z},\ \pi,\ \mu,\ \Phi),
+\end{equation}
+where $\mathcal{Z}=\{z_k\}_{k=1}^{N}$ is a set of scenarios, each $z_k=(T_k,y_k)$ pairing observable
+telemetry $T_k$ with a hidden manifest $y_k=(M_k,G_k)$ that records the ground-truth stages $M_k$ and the
+true attack events $G_k$. The map $\pi$ is the \emph{visibility projection}: it removes every technique
+label and attack flag from the telemetry, so $\pi(T_k)$ is exactly what a detection system is permitted
+to read. A detection \emph{arm} is then a function
+\begin{equation}
+A:\ \pi(\mathcal{T})\ \to\ \mathcal{R},\qquad R_k=A\bigl(\pi(T_k)\bigr),
+\end{equation}
+mapping visible telemetry to a reconstructed chain $R_k$. This turns the answer-key boundary into a
+formal constraint: because $A$ receives only $\pi(T_k)$, its output is independent of the hidden manifest,
+\begin{equation}
+R_k \perp y_k,
+\end{equation}
+so no arm can condition on the labels it is meant to predict. The matching function $\mu$
+(Eq.~\ref{eq:match}) decides when a reported stage agrees with a ground-truth stage, and the scorer
+$\Phi(R,y)$ aggregates its outcome into the metric vector reported throughout---technique-level
+precision, recall, and $F_1$; the event-level pair; and the task-specific reliability rates.
+
+Given these components, evaluating an arm on category $c$ averages the score over that category's
+scenarios, with the $S$ stochastic seeds averaged per scenario before aggregation and categories never
+pooled:
+\begin{equation}
+\mathrm{Eval}_c(A)=\frac{1}{|\mathcal{Z}_c|}\sum_{k\in\mathcal{Z}_c}\frac{1}{S}\sum_{s=1}^{S}
+\Phi\bigl(A^{(s)}(\pi(T_k)),\,y_k\bigr).
+\label{eq:eval}
+\end{equation}
+Because the four arms share one $\mathcal{Z}$ and one $\pi$, their scores can differ only through $A$, so
+the controlled ablation reduces to a difference of functionals,
+\begin{equation}
+\Delta_c(A_i,A_j)=\mathrm{Eval}_c(A_i)-\mathrm{Eval}_c(A_j).
+\label{eq:delta}
+\end{equation}
+The two pre-registered hypotheses are particular instances on the multi-stage category: H1 tests
+$\Delta(A_1,A_4)$ on technique-level recall, and H2 tests $\Delta(A_1,A_2)$ on $F_1$.
+
 \subsection{Scenario Generator and Dual Backends}
 The generator produces roughly seventy scenarios across five never-mixed categories---single-domain,
 multi-stage kill chains, low-and-slow evasion, ephemeral compute, and benign noise---plus a sealed
@@ -280,6 +321,7 @@ arm's output be $R=\{r_1,\dots,r_m\}$ with $r_j=(\hat t_j,\hat\sigma_j,\hat E_j)
 $r_j$ \emph{matches} a ground-truth stage $s_i$ when
 \begin{equation}
 \mathrm{match}(r_j,s_i)\iff \tau(\hat t_j,t_i)\ \wedge\ (\hat\sigma_j=\sigma_i)\ \wedge\ (\hat E_j\cap E_i\neq\varnothing),
+\label{eq:match}
 \end{equation}
 where $\tau(\cdot,\cdot)$ is the technique-agreement test: in \emph{exact} mode it holds only when
 $\hat t=t$, and in \emph{parent} mode also when the two share a parent technique. The evidence
@@ -626,12 +668,24 @@ technique vocabulary supplied in the prompt,
   {\sum_{k=1}^{N}\lvert R_k\rvert},
   \label{eq:halrate}
 \end{align}
-where $\mathbf{1}[\cdot]$ is the indicator function. The two success rates are per-scenario indicator
-averages---detection-success~\eqref{eq:detrate} counts a scenario as solved when the arm flags any true
-attack event, and full-chain~\eqref{eq:fullrate} only when every ground-truth stage is matched---while
-the hallucination rate~\eqref{eq:halrate} is micro-averaged over all proposed stages. The
-technique-exact and tactic accuracies are the analogous per-event fractions of attack events assigned,
-respectively, the correct technique or a technique sharing its ATT\&CK tactic.
+where $\mathbf{1}[\cdot]$ is the indicator function. The two success rates bracket the difficulty of a
+scenario from opposite ends. The detection-success rate~\eqref{eq:detrate} is the most lenient: a
+scenario counts as solved the moment the arm flags even one of its true attack events, so it asks only
+whether the attack was noticed at all. The full-chain success rate~\eqref{eq:fullrate} is its strict
+complement, crediting a scenario only when \emph{every} ground-truth stage is matched---the complete
+reconstruction an analyst ultimately needs. The distance between the two is itself informative: a high
+detection rate beside a low full-chain rate means an arm reliably senses that something is wrong but
+rarely rebuilds the whole chain, which is exactly the pattern we observe for the language model.
+
+The hallucination rate~\eqref{eq:halrate} measures faithfulness rather than coverage. It is the fraction
+of proposed stages whose technique label falls outside the closed vocabulary $V$ that the prompt
+supplies, so a non-zero value means the model named an identifier it was explicitly told not to use. We
+micro-average over all proposals rather than over scenarios, so an arm that emits many spurious labels is
+penalized in proportion to how often it does so; lower is better. Read together, the three rates form a
+floor (did the arm notice the attack?), a ceiling (did it reconstruct every stage?), and a reliability
+check (did it stay inside the allowed label set?). The technique-exact and tactic accuracies complete the
+picture as the analogous per-event fractions of attack events assigned, respectively, the correct
+technique or a technique sharing its ATT\&CK tactic.
 
 \begin{table}[t]
 \caption{Task-specific reliability metrics (Qwen2.5-32B, multi-stage). Hallucination = proposals naming
