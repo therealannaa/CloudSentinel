@@ -121,7 +121,8 @@ matching function, and analysis scripts, released to enable independent replicat
 
 The remainder of this paper is organized as follows. Section~\ref{sec:bg} surveys the background.
 Section~\ref{sec:framework} presents the CloudKC-Bench framework. Section~\ref{sec:impl} describes the
-implementation. Section~\ref{sec:results} reports the experimental results. Section~\ref{sec:disc}
+implementation. Section~\ref{sec:expected} derives the benchmark's expected behavior under an idealized
+capability model. Section~\ref{sec:results} reports the experimental results. Section~\ref{sec:disc}
 interprets the findings and their limitations, and Section~\ref{sec:conc} concludes.
 
 % ====================================================================
@@ -392,6 +393,85 @@ bills, the cloud. The second lets each arm read the stored events, propose a cha
 Both phases are resumable, so an interrupted run skips completed work. The experiments here use the
 development set of fifty-nine scenarios, each run with three seeds. The entire framework is released as
 an open artifact so that every number in this paper can be reproduced.
+
+% ====================================================================
+\section{Expected Performance: An Idealized Analysis}\label{sec:expected}
+Before turning to measured systems, we ask what CloudKC-Bench \emph{should} return as a function of a
+detector's latent capability. This serves two ends. It establishes that the instrument is
+well-posed---a perfect reconstructor scores perfectly, and a stronger detector never scores lower---and
+it supplies a yardstick against which the numbers of Section~\ref{sec:results} can be read as an estimate
+of where a real system sits.
+
+\subsection{A Parametric Capability Model}
+We summarize any detector by a few capability parameters, holding the scenario fixed. For a given true
+attack event, let $p_d\in[0,1]$ be the probability the detector flags it---its \emph{detection
+sensitivity}. For a stage it has already detected, let $p_a\in[0,1]$ be the probability it assigns the
+correct ATT\&CK technique---its \emph{attribution accuracy}. For a benign event, let $\rho\in[0,1]$ be
+the probability it is wrongly flagged, and let $\eta\in[0,1]$ be the probability that a proposed label
+falls outside the closed vocabulary $V$. Events and stages are treated as detected and attributed
+independently; this is the standard first-order simplification and is exact for the expectations below.
+
+Fix a scenario $z_k$ with $n_k$ stages, $g_k=|G_k|$ true attack events, and $b_k$ benign events.
+Detecting a stage's evidence event supplies its source automatically, since each event carries its own
+$\sigma$, so under the matching test~\eqref{eq:match} a stage is a technique-level true positive exactly
+when its evidence is detected \emph{and} its technique is named correctly---an event of probability
+$p_d\,p_a$.
+
+\subsection{Expected Metrics in Closed Form}
+Taking expectations over the detector's randomness gives every reported quantity as a function of these
+parameters:
+\begin{align}
+\mathbb{E}[\mathrm{ev\_recall}] &= p_d, &
+\mathbb{E}[\mathrm{ev\_prec}] &= \frac{p_d\,g_k}{p_d\,g_k+\rho\,b_k}, \label{eq:idev}\\[2pt]
+\mathbb{E}[\mathrm{tech\_recall}] &= p_d\,p_a, &
+\frac{\mathbb{E}[\mathrm{tech\_recall}]}{\mathbb{E}[\mathrm{ev\_recall}]} &= p_a, \label{eq:idtech}\\[2pt]
+\mathbb{E}[\mathrm{DetRate}] &= 1-(1-p_d)^{g_k}, &
+\mathbb{E}[\mathrm{FullRate}] &= (p_d\,p_a)^{n_k}, \label{eq:idrate}
+\end{align}
+with false-positive rate $\rho$, specificity $1-\rho$, hallucination rate $\eta$, and balanced accuracy
+$\tfrac12\bigl(p_d+(1-\rho)\bigr)$. Three features of these expressions drive everything that follows.
+First, the two lenses \emph{identify} the two capabilities separately: the event lens estimates $p_d$,
+and the technique-to-event ratio~\eqref{eq:idtech} estimates the attribution accuracy $p_a$ on its own.
+This is the formal justification for reporting both. Second, full-chain success decays as
+$(p_d p_a)^{n_k}$, exponentially in chain length, so even a strong per-stage reconstructor collapses on
+long chains. Third, the detection-success rate saturates: for $g_k$ of even moderate size,
+$1-(1-p_d)^{g_k}\approx 1$ unless $p_d$ is tiny, which is why we treat DetRate as a floor rather than a
+discriminating metric.
+
+\subsection{Well-Posedness and the Ideal Limit}
+\noindent\textbf{Proposition (monotonicity and saturation).} \emph{For any fixed scenario structure,
+each expected metric in~\eqref{eq:idev}--\eqref{eq:idrate} is non-decreasing in $p_d$ and $p_a$ and
+non-increasing in $\rho$ and $\eta$, and attains its optimum---unity for the recalls, precisions, $F_1$,
+DetRate, FullRate, and balanced accuracy, and zero for the false-positive and hallucination rates---exactly
+at the ideal point $(p_d,p_a,\rho,\eta)=(1,1,0,0)$.}
+
+The proof is immediate, as each expression is a monotone function of the parameters. The consequence is
+what makes CloudKC-Bench a valid instrument: no score can be maximized except by a detector that both
+finds every attack event and names every technique, and any genuine capability gain moves the score in
+the right direction. In the ideal limit an oracle LLM attains event and technique recall $1$, precision
+$1$, FullRate $1$, DetRate $1$, and both the false-positive and hallucination rates $0$. The benchmark's
+ceiling is exactly a perfect kill-chain reconstruction, as intended.
+
+\subsection{What a Strong Model Should Achieve}
+The same closed form predicts a strong-but-imperfect near-future model and sets concrete targets. A
+capable detector might reach $p_d=0.95$ and $p_a=0.90$ at $\rho=0.02$; then~\eqref{eq:idev}--\eqref{eq:idrate}
+give event recall $0.95$, technique recall $0.855$, and---because full-chain success is
+exponential---$\mathrm{FullRate}=(0.855)^{n}$, that is $0.53$ for a four-stage chain and $0.39$ for six.
+Requiring $\mathrm{FullRate}\ge\theta$ on chains of length $n$ imposes a per-stage bar
+\begin{equation}
+p_d\,p_a \;\ge\; \theta^{1/n}, \label{eq:threshold}
+\end{equation}
+so even a coin-flip whole-chain rate ($\theta=0.5$) on four-stage chains already demands
+$p_d\,p_a\ge 0.84$. Only near-perfect per-stage reconstruction yields reliable whole-chain recovery,
+which is precisely why full-chain success is the benchmark's hardest bar.
+
+Finally, the model frames the experiments as a measurement of $(p_d,p_a)$. Substituting the regime a
+current mid-sized open model occupies---strong detection but weak attribution, $p_d\approx0.9$,
+$p_a\approx0.06$, with $\rho$ small---\eqref{eq:idev}--\eqref{eq:idrate} predict technique recall
+$\approx0.05$--$0.08$, $\mathrm{DetRate}\approx1$, and $\mathrm{FullRate}\approx0$. This is exactly the
+pattern Section~\ref{sec:results} reports, so the experiments can be read as locating each arm on the
+$(p_d,p_a)$ plane: today's systems sit in the high-$p_d$, low-$p_a$ corner, and the analysis says the
+distance still to travel toward the ideal is almost entirely in attribution $p_a$, not detection.
 
 % ====================================================================
 \section{Experimental Results}\label{sec:results}
