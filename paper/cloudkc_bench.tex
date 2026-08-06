@@ -465,13 +465,25 @@ so even a coin-flip whole-chain rate ($\theta=0.5$) on four-stage chains already
 $p_d\,p_a\ge 0.84$. Only near-perfect per-stage reconstruction yields reliable whole-chain recovery,
 which is precisely why full-chain success is the benchmark's hardest bar.
 
-Finally, the model frames the experiments as a measurement of $(p_d,p_a)$. Substituting the regime a
-current mid-sized open model occupies---strong detection but weak attribution, $p_d\approx0.9$,
-$p_a\approx0.06$, with $\rho$ small---\eqref{eq:idev}--\eqref{eq:idrate} predict technique recall
-$\approx0.05$--$0.08$, $\mathrm{DetRate}\approx1$, and $\mathrm{FullRate}\approx0$. This is exactly the
-pattern Section~\ref{sec:results} reports, so the experiments can be read as locating each arm on the
-$(p_d,p_a)$ plane: today's systems sit in the high-$p_d$, low-$p_a$ corner, and the analysis says the
-distance still to travel toward the ideal is almost entirely in attribution $p_a$, not detection.
+Finally, the model frames the experiments as a measurement of $(p_d,p_a)$, as Fig.~\ref{fig:capplane}
+makes visual. Substituting the regime a current mid-sized open model occupies---strong detection but weak
+attribution, $p_d\approx0.9$, $p_a\approx0.06$, with $\rho$ small---\eqref{eq:idev}--\eqref{eq:idrate}
+predict technique recall $\approx0.05$--$0.08$, $\mathrm{DetRate}\approx1$, and
+$\mathrm{FullRate}\approx0$. This is exactly the pattern Section~\ref{sec:results} reports, so the
+experiments can be read as locating each arm on the $(p_d,p_a)$ plane: today's systems sit in the
+high-$p_d$, low-$p_a$ corner, and the analysis says the distance still to travel toward the ideal is
+almost entirely in attribution $p_a$, not detection.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_capability_plane.pdf}
+\caption{The capability plane. Technique recall equals $p_d\,p_a$ (shaded contours); the event lens
+measures $p_d$ and the technique-to-event ratio measures $p_a$. A perfect reconstructor sits at the ideal
+corner $(1,1)$; a strong near-future model near $(0.95,0.90)$; today's mid-sized open models in the
+high-$p_d$, low-$p_a$ corner. The remaining path to the ideal is almost vertical---gains must come from
+attribution, not detection.}
+\label{fig:capplane}
+\end{figure}
 
 % ====================================================================
 \section{Experimental Results}\label{sec:results}
