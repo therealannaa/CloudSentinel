@@ -421,12 +421,12 @@ $p_d\,p_a$.
 Taking expectations over the detector's randomness gives every reported quantity as a function of these
 parameters:
 \begin{align}
-\mathbb{E}[\mathrm{ev\_recall}] &= p_d, &
-\mathbb{E}[\mathrm{ev\_prec}] &= \frac{p_d\,g_k}{p_d\,g_k+\rho\,b_k}, \label{eq:idev}\\[2pt]
-\mathbb{E}[\mathrm{tech\_recall}] &= p_d\,p_a, &
+\mathbb{E}[\mathrm{ev\_recall}] &= p_d, \label{eq:idev}\\[2pt]
+\mathbb{E}[\mathrm{ev\_prec}] &= \frac{p_d\,g_k}{p_d\,g_k+\rho\,b_k}, \label{eq:idprec}\\[2pt]
+\mathbb{E}[\mathrm{tech\_recall}] &= p_d\,p_a, \label{eq:idtechrec}\\[2pt]
 \frac{\mathbb{E}[\mathrm{tech\_recall}]}{\mathbb{E}[\mathrm{ev\_recall}]} &= p_a, \label{eq:idtech}\\[2pt]
-\mathbb{E}[\mathrm{DetRate}] &= 1-(1-p_d)^{g_k}, &
-\mathbb{E}[\mathrm{FullRate}] &= (p_d\,p_a)^{n_k}, \label{eq:idrate}
+\mathbb{E}[\mathrm{DetRate}] &= 1-(1-p_d)^{g_k}, \label{eq:iddet}\\[2pt]
+\mathbb{E}[\mathrm{FullRate}] &= (p_d\,p_a)^{n_k}. \label{eq:idrate}
 \end{align}
 with false-positive rate $\rho$, specificity $1-\rho$, hallucination rate $\eta$, and balanced accuracy
 $\tfrac12\bigl(p_d+(1-\rho)\bigr)$. Three features of these expressions drive everything that follows.
