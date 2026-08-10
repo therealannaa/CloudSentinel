@@ -1,0 +1,89 @@
+scenario_id,category,stage_id,ttp_id,ttp_name,telemetry_source,evidence_event_ids,ts_start,ts_end
+EP-01,ephemeral,1,T1496,Resource Hijacking,EC2,EP-01-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-02,ephemeral,1,T1537,Transfer Data to Cloud Account,VPC,EP-02-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-03,ephemeral,1,T1548.005,Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access,CloudTrail,EP-03-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-04,ephemeral,1,T1496,Resource Hijacking,EC2,EP-04-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-05,ephemeral,1,T1526,Cloud Service Discovery,CloudTrail,EP-05-s1-0;EP-05-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+EP-06,ephemeral,1,T1046,Network Service Discovery,VPC,EP-06-s1-0;EP-06-s1-1;EP-06-s1-2;EP-06-s1-3;EP-06-s1-4;EP-06-s1-5;EP-06-s1-6;EP-06-s1-7;EP-06-s1-8;EP-06-s1-9;EP-06-s1-10;EP-06-s1-11;EP-06-s1-12;EP-06-s1-13;EP-06-s1-14;EP-06-s1-15;EP-06-s1-16;EP-06-s1-17;EP-06-s1-18;EP-06-s1-19;EP-06-s1-20;EP-06-s1-21;EP-06-s1-22;EP-06-s1-23;EP-06-s1-24,2026-01-01T00:00:00+00:00,2026-01-01T00:00:24+00:00
+EP-07,ephemeral,1,T1528,Steal Application Access Token,CloudTrail,EP-07-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-08,ephemeral,1,T1578,Modify Cloud Compute Infrastructure,CloudTrail,EP-08-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-09,ephemeral,1,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,EP-09-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+EP-10,ephemeral,1,T1571,Non-Standard Port,VPC,EP-10-s1-0;EP-10-s1-1;EP-10-s1-2;EP-10-s1-3,2026-01-01T00:00:00+00:00,2026-01-01T00:00:03+00:00
+KC-01,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-01-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-01,multi_stage_kill_chain,2,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,KC-01-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-01,multi_stage_kill_chain,3,T1530,Data from Cloud Storage Object,S3,KC-01-s3-0;KC-01-s3-1;KC-01-s3-2;KC-01-s3-3;KC-01-s3-4;KC-01-s3-5,2026-01-01T00:02:00+00:00,2026-01-01T00:02:05+00:00
+KC-01,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,VPC,KC-01-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-02,multi_stage_kill_chain,1,T1552.005,Unsecured Credentials: Cloud Instance Metadata API,CloudTrail,KC-02-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-02,multi_stage_kill_chain,2,T1580,Cloud Infrastructure Discovery,CloudTrail,KC-02-s2-0;KC-02-s2-1,2026-01-01T00:01:00+00:00,2026-01-01T00:01:01+00:00
+KC-02,multi_stage_kill_chain,3,T1530,Data from Cloud Storage Object,S3,KC-02-s3-0;KC-02-s3-1;KC-02-s3-2;KC-02-s3-3;KC-02-s3-4;KC-02-s3-5,2026-01-01T00:02:00+00:00,2026-01-01T00:02:05+00:00
+KC-02,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,VPC,KC-02-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-03,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-03-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-03,multi_stage_kill_chain,2,T1548.005,Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access,CloudTrail,KC-03-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-03,multi_stage_kill_chain,3,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,KC-03-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-03,multi_stage_kill_chain,4,T1562.008,Impair Defenses: Disable Cloud Logs,CloudTrail,KC-03-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-04,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-04-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-04,multi_stage_kill_chain,2,T1526,Cloud Service Discovery,CloudTrail,KC-04-s2-0;KC-04-s2-1,2026-01-01T00:01:00+00:00,2026-01-01T00:01:01+00:00
+KC-04,multi_stage_kill_chain,3,T1548.005,Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access,CloudTrail,KC-04-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-04,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,VPC,KC-04-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-05,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-05-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-05,multi_stage_kill_chain,2,T1528,Steal Application Access Token,CloudTrail,KC-05-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-05,multi_stage_kill_chain,3,T1580,Cloud Infrastructure Discovery,CloudTrail,KC-05-s3-0;KC-05-s3-1,2026-01-01T00:02:00+00:00,2026-01-01T00:02:01+00:00
+KC-05,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,S3,KC-05-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-06,multi_stage_kill_chain,1,T1098,Account Manipulation,CloudTrail,KC-06-s1-0;KC-06-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+KC-06,multi_stage_kill_chain,2,T1530,Data from Cloud Storage Object,S3,KC-06-s2-0;KC-06-s2-1;KC-06-s2-2;KC-06-s2-3;KC-06-s2-4;KC-06-s2-5,2026-01-01T00:01:00+00:00,2026-01-01T00:01:05+00:00
+KC-06,multi_stage_kill_chain,3,T1537,Transfer Data to Cloud Account,VPC,KC-06-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-07,multi_stage_kill_chain,1,T1552.005,Unsecured Credentials: Cloud Instance Metadata API,CloudTrail,KC-07-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-07,multi_stage_kill_chain,2,T1578,Modify Cloud Compute Infrastructure,CloudTrail,KC-07-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-07,multi_stage_kill_chain,3,T1496,Resource Hijacking,EC2,KC-07-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-08,multi_stage_kill_chain,1,T1110,Brute Force,CloudTrail,KC-08-s1-0;KC-08-s1-1;KC-08-s1-2;KC-08-s1-3;KC-08-s1-4;KC-08-s1-5,2026-01-01T00:00:00+00:00,2026-01-01T00:00:05+00:00
+KC-08,multi_stage_kill_chain,2,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-08-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-08,multi_stage_kill_chain,3,T1562.008,Impair Defenses: Disable Cloud Logs,CloudTrail,KC-08-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-08,multi_stage_kill_chain,4,T1485,Data Destruction,S3,KC-08-s4-0;KC-08-s4-1;KC-08-s4-2;KC-08-s4-3;KC-08-s4-4;KC-08-s4-5;KC-08-s4-6;KC-08-s4-7,2026-01-01T00:03:00+00:00,2026-01-01T00:03:07+00:00
+KC-09,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-09-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-09,multi_stage_kill_chain,2,T1190,Exploit Public-Facing Application,CloudTrail,KC-09-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-09,multi_stage_kill_chain,3,T1530,Data from Cloud Storage Object,S3,KC-09-s3-0;KC-09-s3-1;KC-09-s3-2;KC-09-s3-3;KC-09-s3-4;KC-09-s3-5,2026-01-01T00:02:00+00:00,2026-01-01T00:02:05+00:00
+KC-09,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,VPC,KC-09-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-10,multi_stage_kill_chain,1,T1580,Cloud Infrastructure Discovery,CloudTrail,KC-10-s1-0;KC-10-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+KC-10,multi_stage_kill_chain,2,T1530,Data from Cloud Storage Object,S3,KC-10-s2-0;KC-10-s2-1;KC-10-s2-2;KC-10-s2-3;KC-10-s2-4;KC-10-s2-5,2026-01-01T00:01:00+00:00,2026-01-01T00:01:05+00:00
+KC-10,multi_stage_kill_chain,3,T1537,Transfer Data to Cloud Account,VPC,KC-10-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-11,multi_stage_kill_chain,1,T1548.005,Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access,CloudTrail,KC-11-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-11,multi_stage_kill_chain,2,T1528,Steal Application Access Token,CloudTrail,KC-11-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-11,multi_stage_kill_chain,3,T1537,Transfer Data to Cloud Account,S3,KC-11-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-12,multi_stage_kill_chain,1,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,KC-12-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-12,multi_stage_kill_chain,2,T1548.005,Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access,CloudTrail,KC-12-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-12,multi_stage_kill_chain,3,T1496,Resource Hijacking,EC2,KC-12-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-13,multi_stage_kill_chain,1,T1098,Account Manipulation,CloudTrail,KC-13-s1-0;KC-13-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+KC-13,multi_stage_kill_chain,2,T1528,Steal Application Access Token,CloudTrail,KC-13-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-13,multi_stage_kill_chain,3,T1530,Data from Cloud Storage Object,S3,KC-13-s3-0;KC-13-s3-1;KC-13-s3-2;KC-13-s3-3;KC-13-s3-4;KC-13-s3-5,2026-01-01T00:02:00+00:00,2026-01-01T00:02:05+00:00
+KC-13,multi_stage_kill_chain,4,T1537,Transfer Data to Cloud Account,VPC,KC-13-s4-0,2026-01-01T00:03:00+00:00,2026-01-01T00:03:00+00:00
+KC-14,multi_stage_kill_chain,1,T1578,Modify Cloud Compute Infrastructure,CloudTrail,KC-14-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-14,multi_stage_kill_chain,2,T1537,Transfer Data to Cloud Account,CloudTrail,KC-14-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-15,multi_stage_kill_chain,1,T1078.004,Valid Accounts: Cloud Accounts,CloudTrail,KC-15-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+KC-15,multi_stage_kill_chain,2,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,KC-15-s2-0,2026-01-01T00:01:00+00:00,2026-01-01T00:01:00+00:00
+KC-15,multi_stage_kill_chain,3,T1562.008,Impair Defenses: Disable Cloud Logs,CloudTrail,KC-15-s3-0,2026-01-01T00:02:00+00:00,2026-01-01T00:02:00+00:00
+KC-15,multi_stage_kill_chain,4,T1485,Data Destruction,S3,KC-15-s4-0;KC-15-s4-1;KC-15-s4-2;KC-15-s4-3;KC-15-s4-4;KC-15-s4-5;KC-15-s4-6;KC-15-s4-7,2026-01-01T00:03:00+00:00,2026-01-01T00:03:07+00:00
+LS-01,low_and_slow,1,T1098,Account Manipulation,CloudTrail,LS-01-s1-0;LS-01-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+LS-02,low_and_slow,1,T1530,Data from Cloud Storage Object,S3,LS-02-s1-0;LS-02-s1-1;LS-02-s1-2;LS-02-s1-3;LS-02-s1-4;LS-02-s1-5,2026-01-01T00:00:00+00:00,2026-01-01T00:00:05+00:00
+LS-02,low_and_slow,2,T1537,Transfer Data to Cloud Account,VPC,LS-02-s2-0,2026-01-01T06:00:00+00:00,2026-01-01T06:00:00+00:00
+LS-03,low_and_slow,1,T1571,Non-Standard Port,VPC,LS-03-s1-0;LS-03-s1-1;LS-03-s1-2;LS-03-s1-3,2026-01-01T00:00:00+00:00,2026-01-01T00:00:03+00:00
+LS-04,low_and_slow,1,T1526,Cloud Service Discovery,CloudTrail,LS-04-s1-0;LS-04-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+LS-05,low_and_slow,1,T1098.001,Account Manipulation: Additional Cloud Credentials,CloudTrail,LS-05-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-06,low_and_slow,1,T1537,Transfer Data to Cloud Account,S3,LS-06-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-07,low_and_slow,1,T1552.005,Unsecured Credentials: Cloud Instance Metadata API,CloudTrail,LS-07-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-08,low_and_slow,1,T1190,Exploit Public-Facing Application,CloudTrail,LS-08-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-09,low_and_slow,1,T1110,Brute Force,CloudTrail,LS-09-s1-0;LS-09-s1-1;LS-09-s1-2;LS-09-s1-3;LS-09-s1-4;LS-09-s1-5,2026-01-01T00:00:00+00:00,2026-01-01T00:00:05+00:00
+LS-10,low_and_slow,1,T1578,Modify Cloud Compute Infrastructure,CloudTrail,LS-10-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-11,low_and_slow,1,T1528,Steal Application Access Token,CloudTrail,LS-11-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+LS-12,low_and_slow,1,T1562.008,Impair Defenses: Disable Cloud Logs,CloudTrail,LS-12-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-01,single_domain,1,T1530,Data from Cloud Storage Object,S3,SD-01-s1-0;SD-01-s1-1;SD-01-s1-2;SD-01-s1-3;SD-01-s1-4;SD-01-s1-5,2026-01-01T00:00:00+00:00,2026-01-01T00:00:05+00:00
+SD-02,single_domain,1,T1190,Exploit Public-Facing Application,CloudTrail,SD-02-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-03,single_domain,1,T1485,Data Destruction,S3,SD-03-s1-0;SD-03-s1-1;SD-03-s1-2;SD-03-s1-3;SD-03-s1-4;SD-03-s1-5;SD-03-s1-6;SD-03-s1-7,2026-01-01T00:00:00+00:00,2026-01-01T00:00:07+00:00
+SD-04,single_domain,1,T1578,Modify Cloud Compute Infrastructure,CloudTrail,SD-04-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-05,single_domain,1,T1552.005,Unsecured Credentials: Cloud Instance Metadata API,CloudTrail,SD-05-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-06,single_domain,1,T1046,Network Service Discovery,VPC,SD-06-s1-0;SD-06-s1-1;SD-06-s1-2;SD-06-s1-3;SD-06-s1-4;SD-06-s1-5;SD-06-s1-6;SD-06-s1-7;SD-06-s1-8;SD-06-s1-9;SD-06-s1-10;SD-06-s1-11;SD-06-s1-12;SD-06-s1-13;SD-06-s1-14;SD-06-s1-15;SD-06-s1-16;SD-06-s1-17;SD-06-s1-18;SD-06-s1-19;SD-06-s1-20;SD-06-s1-21;SD-06-s1-22;SD-06-s1-23;SD-06-s1-24,2026-01-01T00:00:00+00:00,2026-01-01T00:00:24+00:00
+SD-07,single_domain,1,T1110,Brute Force,CloudTrail,SD-07-s1-0;SD-07-s1-1;SD-07-s1-2;SD-07-s1-3;SD-07-s1-4;SD-07-s1-5,2026-01-01T00:00:00+00:00,2026-01-01T00:00:05+00:00
+SD-08,single_domain,1,T1530,Data from Cloud Storage Object,CloudTrail,SD-08-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-09,single_domain,1,T1562.008,Impair Defenses: Disable Cloud Logs,CloudTrail,SD-09-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00
+SD-10,single_domain,1,T1526,Cloud Service Discovery,CloudTrail,SD-10-s1-0;SD-10-s1-1,2026-01-01T00:00:00+00:00,2026-01-01T00:00:01+00:00
+SD-11,single_domain,1,T1571,Non-Standard Port,VPC,SD-11-s1-0;SD-11-s1-1;SD-11-s1-2;SD-11-s1-3,2026-01-01T00:00:00+00:00,2026-01-01T00:00:03+00:00
+SD-12,single_domain,1,T1528,Steal Application Access Token,CloudTrail,SD-12-s1-0,2026-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00

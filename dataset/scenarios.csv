@@ -1,0 +1,60 @@
+scenario_id,category,real_incident_reference,n_stages,n_events,n_ground_truth_events
+BN-01,benign,N/A - synthetic benign baseline,0,6,0
+BN-02,benign,N/A - synthetic benign baseline,0,6,0
+BN-03,benign,N/A - synthetic benign baseline,0,6,0
+BN-04,benign,N/A - synthetic benign baseline,0,6,0
+BN-05,benign,N/A - synthetic benign baseline,0,6,0
+BN-06,benign,N/A - synthetic benign baseline,0,6,0
+BN-07,benign,N/A - synthetic benign baseline,0,6,0
+BN-08,benign,N/A - synthetic benign baseline,0,6,0
+BN-09,benign,N/A - synthetic benign baseline,0,6,0
+BN-10,benign,N/A - synthetic benign baseline,0,6,0
+EP-01,ephemeral,Spin-up -> mine -> terminate in minutes; representative ephemeral cryptojacking (ATT&CK T1496),1,5,1
+EP-02,ephemeral,Short-lived instance for exfil staging; representative burner-exfil (ATT&CK T1537),1,5,1
+EP-03,ephemeral,Transient role assume + immediate revoke; representative just-in-time abuse (ATT&CK T1548.005),1,5,1
+EP-04,ephemeral,Spot-instance cryptomining burst; representative spot-abuse (ATT&CK T1496),1,5,1
+EP-05,ephemeral,Ephemeral Lambda for discovery; representative serverless recon (ATT&CK T1526),1,6,2
+EP-06,ephemeral,Burner instance port scan then terminate; representative recon burst (ATT&CK T1046),1,29,25
+EP-07,ephemeral,Short-lived instance secrets pull; representative quick secret theft (ATT&CK T1528),1,5,1
+EP-08,ephemeral,Quick AMI copy then deregister; representative image exfil (ATT&CK T1578),1,5,1
+EP-09,ephemeral,Transient access-key create+use+delete; representative ephemeral creds (ATT&CK T1098.001),1,5,1
+EP-10,ephemeral,Ephemeral instance beacon then terminate; representative short C2 (ATT&CK T1571),1,8,4
+KC-01,multi_stage_kill_chain,Stolen creds -> IAM backdoor -> S3 exfil; Rhino CloudGoat IAM-privesc pattern (Rhino Security Labs),4,13,9
+KC-02,multi_stage_kill_chain,SSRF -> IMDS -> discovery -> S3 exfil; Capital One breach 2019 (Krebs 2019; Appsecco analysis),4,14,10
+KC-03,multi_stage_kill_chain,Key -> privesc -> disable logging; Rhino CloudGoat privesc + defense-evasion pattern (Rhino Security Labs),4,8,4
+KC-04,multi_stage_kill_chain,"Cred theft -> lateral AssumeRole -> exfil; SCARLETEEL (Sysdig, Feb 2023)",4,9,5
+KC-05,multi_stage_kill_chain,Secrets -> discovery -> cross-account copy; representative token->cross-account exfil chain (ATT&CK T1537),4,9,5
+KC-06,multi_stage_kill_chain,New IAM user -> S3 staging -> exfil; Rhino CloudGoat IAM-persistence pattern (Rhino Security Labs),3,13,9
+KC-07,multi_stage_kill_chain,IMDS -> cryptomining launch -> impact; TeamTNT cryptojacking worm (Cado Security 2020; Sysdig),3,7,3
+KC-08,multi_stage_kill_chain,Brute force -> valid acct -> disable logs -> destroy; representative stuffing->destruction chain,4,20,16
+KC-09,multi_stage_kill_chain,Phished creds -> console -> SG open -> exfil; representative phishing-for-cloud-creds chain,4,13,9
+KC-10,multi_stage_kill_chain,Public-bucket discovery -> mass download -> cross-account; representative open-bucket harvest chain,3,13,9
+KC-11,multi_stage_kill_chain,Role chaining -> secrets -> exfil; representative AssumeRole-chaining chain (ATT&CK T1548.005),3,7,3
+KC-12,multi_stage_kill_chain,Login-profile persistence -> privesc -> mining; representative persistence->hijack chain,3,7,3
+KC-13,multi_stage_kill_chain,Lambda backdoor -> creds -> S3 exfil; representative serverless-backdoor chain,4,14,10
+KC-14,multi_stage_kill_chain,Snapshot/AMI exfil -> cross-account share; representative EBS-snapshot exfil (ATT&CK T1578/T1537),2,6,2
+KC-15,multi_stage_kill_chain,Slow compromise -> logging-off -> destruction; representative long-dwell destructive chain,4,15,11
+LS-01,low_and_slow,Slow privilege escalation over days; representative long-dwell APT privesc (ATT&CK T1098),1,6,2
+LS-02,low_and_slow,Drip-rate S3 exfiltration; representative low-and-slow exfil (ATT&CK T1530/T1537),2,11,7
+LS-03,low_and_slow,Periodic beaconing C2; representative low-and-slow pattern (ATT&CK T1571),1,8,4
+LS-04,low_and_slow,Staged discovery across sessions; representative stealthy enumeration (ATT&CK T1526),1,6,2
+LS-05,low_and_slow,Gradual IAM key creation across users; representative slow-persistence (ATT&CK T1098.001),1,5,1
+LS-06,low_and_slow,Low-volume cross-account copy over weeks; representative stealth exfil (ATT&CK T1537),1,5,1
+LS-07,low_and_slow,Intermittent IMDS cred-refresh abuse; representative pattern (ATT&CK T1552.005),1,5,1
+LS-08,low_and_slow,Slow security-group rule drift opening ports; representative config-drift abuse (ATT&CK T1190),1,5,1
+LS-09,low_and_slow,Sporadic brute force then success; representative slow credential-stuffing (ATT&CK T1110),1,10,6
+LS-10,low_and_slow,Long-dwell snapshot sharing; representative snapshot exfil (ATT&CK T1578),1,5,1
+LS-11,low_and_slow,Periodic secret access blended with legit; representative blended theft (ATT&CK T1528),1,5,1
+LS-12,low_and_slow,Slow log-tampering (rotate off/on); representative evasion drift (ATT&CK T1562.008),1,5,1
+SD-01,single_domain,Public S3 bucket mass-read; representative of UpGuard-documented open-bucket exposures (ATT&CK T1530),1,10,6
+SD-02,single_domain,Dangerous security-group ingress opened to 0.0.0.0/0; representative Stratus Red Team SG-misconfig pattern (Datadog) (ATT&CK T1190),1,5,1
+SD-03,single_domain,Bulk ransom-style S3 object deletion; representative impact pattern (ATT&CK T1485),1,12,8
+SD-04,single_domain,EC2 launch in unapproved region for cryptomining; representative pattern (ATT&CK T1578),1,5,1
+SD-05,single_domain,IMDSv1 credential theft; TeamTNT cryptojacking worm (Cado Security 2020; Sysdig) (ATT&CK T1552.005),1,5,1
+SD-06,single_domain,Network port scan against a subnet; representative active-scanning recon (ATT&CK T1046),1,29,25
+SD-07,single_domain,Console/API brute force; representative credential-stuffing pattern (ATT&CK T1110),1,10,6
+SD-08,single_domain,S3 default-encryption disabled; representative misconfig-exposure pattern (ATT&CK T1530),1,5,1
+SD-09,single_domain,"CloudTrail StopLogging; defense-evasion, Stratus aws.defense-evasion.stop-cloudtrail (Datadog) (ATT&CK T1562.008)",1,5,1
+SD-10,single_domain,Mass IAM/resource enumeration; representative post-compromise discovery (ATT&CK T1526),1,6,2
+SD-11,single_domain,Beaconing on a non-standard port; representative C2 pattern (ATT&CK T1571),1,8,4
+SD-12,single_domain,Bulk Secrets Manager access; representative secret-theft pattern (ATT&CK T1528),1,5,1
