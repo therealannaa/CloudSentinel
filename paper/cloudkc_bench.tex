@@ -17,7 +17,7 @@
 
 \title{CloudKC-Bench: An Open Benchmark for LLM Cross-Domain\\Correlation in AWS Kill-Chain Reconstruction}
 
-\author{Atishay~Jain, Anna~M., and S.~Nagasundari%
+\author{Atishay~Jain, Annamalai~N, and S.~Nagasundari%
 \thanks{The authors are with the Centre for Information Security, Forensics and Cyber Resilience
 (ISFCR), PES University, Bengaluru, India (e-mail: atishay.offical@gmail.com).}}
 
@@ -25,8 +25,8 @@
 
 \begin{abstract}
 Attacks on cloud infrastructure rarely appear as a single anomalous event; a modern multi-stage
-kill chain scatters its evidence across heterogeneous logs---administrative API activity, network
-flows, storage operations, and compute events---that share no common key. Whether large language
+kill chain scatters its evidence across heterogeneous logs (administrative API activity, network
+flows, storage operations, and compute events) that share no common key. Whether large language
 models (LLMs) can correlate across these logs to rebuild the attack, and whether they do so better
 than simpler methods, is an open and largely unmeasured question. We present CloudKC-Bench, the
 first open benchmark for AWS control-plane multi-stage kill-chain reconstruction: taxonomy-structured,
@@ -53,8 +53,8 @@ spending on public cloud services to reach US\$723.4 billion in
 2025, up 21.5\% from US\$595.7 billion in 2024, driven in large part by the rise of
 artificial-intelligence workloads~\cite{gartner25}. As companies move not just their data and
 computing but also their identities, controls, and administrative tools into the cloud, the
-\emph{control plane}---the set of interfaces used to create, configure, and manage cloud
-resources---becomes the main place where both business value and security risk now sit.
+\emph{control plane}, the set of interfaces used to create, configure, and manage cloud
+resources, becomes the main place where both business value and security risk now sit.
 
 This shift has a well-known cost. Gartner predicts that through 2025, about 99\% of cloud security
 failures will be the customer's own fault, usually caused by misconfiguration or poorly managed
@@ -91,15 +91,15 @@ system, without shared and clearly labeled datasets, and without acknowledging t
 can change from run to run. These are exactly the pitfalls shown to inflate results across security
 machine learning~\cite{arp22}. Compounding the problem, no public benchmark exists for rebuilding AWS
 control-plane kill chains with answers a computer can check automatically. The benchmarks that do exist
-target a different platform or a different task---malware analysis, threat-intelligence question
-answering, architecture modeling, insider threat---or they measure how well a system \emph{writes}
+target a different platform or a different task (malware analysis, threat-intelligence question
+answering, architecture modeling, insider threat), or they measure how well a system \emph{writes}
 detection rules rather than how well it \emph{rebuilds} an attack~\cite{cybersoceval, excytin, orgforge,
 acseeval}. The community is left without the tool to measure whether LLM correlation actually helps, and
 without the method to say which part of a system deserves the credit.
 
 This paper addresses that gap. We present CloudKC-Bench, an open, answer-checked benchmark for
 rebuilding AWS control-plane multi-stage kill chains, and use it to run a pre-registered, controlled
-comparison of four system variants---plus an independent rule-based baseline---on real AWS data,
+comparison of four system variants (plus an independent rule-based baseline) on real AWS data,
 reporting the results whether or not the language model wins. The principal contributions of
 this work are as follows.
 
@@ -108,8 +108,8 @@ this work are as follows.
 multi-stage kill chains, releasing taxonomy-structured, real-incident-grounded scenarios with
 machine-checkable ground-truth manifests and a published, deterministic matching function.
 \item \textbf{C2.} A pre-registered, controlled four-arm ablation on identical telemetry that
-attributes any detection advantage to a specific layer---pre-filtering, the LLM, or multi-agent
-decomposition---together with an independent community-Sigma baseline.
+attributes any detection advantage to a specific layer (pre-filtering, the LLM, or multi-agent
+decomposition), together with an independent community Sigma baseline.
 \item \textbf{C3.} A first-class cost-and-latency analysis of deterministic pre-filtering,
 quantifying the trade-off between token expenditure and detection recall.
 \item \textbf{C4.} A failure-mode taxonomy including technique-attribution confusion and a
@@ -212,8 +212,8 @@ against precision in a way that is hard to escape, while language models introdu
 can confidently produce a plausible but wrong label. Third, evaluation is weak: much work reports
 success without a shared ground-truthed dataset, without baselines that isolate each component, and
 without acknowledging model variability, making headline numbers hard to trust. These are precisely the
-methodological pitfalls---among them data leakage, unrealistic class balance, and inappropriate
-baselines---that a broad study of machine learning in computer security identified as silently
+methodological pitfalls (among them data leakage, unrealistic class balance, and inappropriate
+baselines) that a broad study of machine learning in computer security identified as silently
 undermining reported results~\cite{arp22}, and they motivate the safeguards built into our benchmark.
 
 \subsection{Research Gap}
@@ -234,7 +234,7 @@ scenarios and records the correct answer for each, and an \emph{evaluation harne
 competing detection systems over that data and scores them automatically. Figure~\ref{fig:system}
 shows the overall pipeline. Telemetry for a scenario is produced by a backend, normalized into a
 common event format, and stored in a local database alongside a hidden answer key. A detection
-system---an \emph{arm}---reads only the visible parts of the events, proposes a reconstructed attack
+system, an \emph{arm}, reads only the visible parts of the events, proposes a reconstructed attack
 chain, and hands it to a mechanical scorer, which compares it to the answer key. Because all arms read
 the same events and emit the same output, any difference in their scores comes from the arm itself.
 
@@ -267,7 +267,7 @@ R_k \perp y_k,
 \end{equation}
 so no arm can condition on the labels it is meant to predict. The matching function $\mu$
 (Eq.~\ref{eq:match}) decides when a reported stage agrees with a ground-truth stage, and the scorer
-$\Phi(R,y)$ aggregates its outcome into the metric vector reported throughout---technique-level
+$\Phi(R,y)$ aggregates its outcome into the metric vector reported throughout: technique-level
 precision, recall, and $F_1$; the event-level pair; and the task-specific reliability rates.
 
 Given these components, evaluating an arm on category $c$ averages the score over that category's
@@ -288,8 +288,8 @@ The two pre-registered hypotheses are particular instances on the multi-stage ca
 $\Delta(A_1,A_4)$ on technique-level recall, and H2 tests $\Delta(A_1,A_2)$ on $F_1$.
 
 \subsection{Scenario Generator and Dual Backends}
-The generator produces roughly seventy scenarios across five never-mixed categories---single-domain,
-multi-stage kill chains, low-and-slow evasion, ephemeral compute, and benign noise---plus a sealed
+The generator produces roughly seventy scenarios across five never-mixed categories (single-domain,
+multi-stage kill chains, low-and-slow evasion, ephemeral compute, and benign noise) plus a sealed
 hold-out set. Each scenario is grounded in a documented real incident and mapped to ATT\&CK-for-Cloud
 techniques. Two interchangeable backends emit the same event schema: a \emph{synthetic} backend that
 builds events deterministically and forms the reproducibility layer, and an \emph{execution} backend
@@ -380,8 +380,8 @@ explicit safety gates and a mandatory teardown of every created resource.
 
 The language-model arms use open Qwen2.5 models~\cite{qwen}, served locally through Ollama behind an
 OpenAI-compatible interface, keeping the study free of external quotas and all telemetry private. Two
-sizes are studied on identical data---7-billion and 32-billion parameters, both four-bit
-quantized---with \emph{no} fine-tuning; the models are used zero-shot, given only the closed list of
+sizes are studied on identical data (7-billion and 32-billion parameters, both four-bit
+quantized) with \emph{no} fine-tuning; the models are used zero-shot, given only the closed list of
 in-scope techniques in the prompt so the task is well posed. Each experiment pins one model version
 and records it with every result. The real-model experiments ran on a workstation with a 24\,GB
 graphics card sufficient to hold the 32B model in graphics memory, and the real-cloud experiments used
@@ -398,15 +398,15 @@ an open artifact so that every number in this paper can be reproduced.
 \section{Expected Performance: An Idealized Analysis}\label{sec:expected}
 Before turning to measured systems, we ask what CloudKC-Bench \emph{should} return as a function of a
 detector's latent capability. This serves two ends. It establishes that the instrument is
-well-posed---a perfect reconstructor scores perfectly, and a stronger detector never scores lower---and
+well-posed (a perfect reconstructor scores perfectly, and a stronger detector never scores lower), and
 it supplies a yardstick against which the numbers of Section~\ref{sec:results} can be read as an estimate
 of where a real system sits.
 
 \subsection{A Parametric Capability Model}
 We summarize any detector by a few capability parameters, holding the scenario fixed. For a given true
-attack event, let $p_d\in[0,1]$ be the probability the detector flags it---its \emph{detection
+attack event, let $p_d\in[0,1]$ be the probability the detector flags it, its \emph{detection
 sensitivity}. For a stage it has already detected, let $p_a\in[0,1]$ be the probability it assigns the
-correct ATT\&CK technique---its \emph{attribution accuracy}. For a benign event, let $\rho\in[0,1]$ be
+correct ATT\&CK technique, its \emph{attribution accuracy}. For a benign event, let $\rho\in[0,1]$ be
 the probability it is wrongly flagged, and let $\eta\in[0,1]$ be the probability that a proposed label
 falls outside the closed vocabulary $V$. Events and stages are treated as detected and attributed
 independently; this is the standard first-order simplification and is exact for the expectations below.
@@ -414,7 +414,7 @@ independently; this is the standard first-order simplification and is exact for 
 Fix a scenario $z_k$ with $n_k$ stages, $g_k=|G_k|$ true attack events, and $b_k$ benign events.
 Detecting a stage's evidence event supplies its source automatically, since each event carries its own
 $\sigma$, so under the matching test~\eqref{eq:match} a stage is a technique-level true positive exactly
-when its evidence is detected \emph{and} its technique is named correctly---an event of probability
+when its evidence is detected \emph{and} its technique is named correctly, an event of probability
 $p_d\,p_a$.
 
 \subsection{Expected Metrics in Closed Form}
@@ -441,8 +441,8 @@ discriminating metric.
 \subsection{Well-Posedness and the Ideal Limit}
 \noindent\textbf{Proposition (monotonicity and saturation).} \emph{For any fixed scenario structure,
 each expected metric in~\eqref{eq:idev}--\eqref{eq:idrate} is non-decreasing in $p_d$ and $p_a$ and
-non-increasing in $\rho$ and $\eta$, and attains its optimum---unity for the recalls, precisions, $F_1$,
-DetRate, FullRate, and balanced accuracy, and zero for the false-positive and hallucination rates---exactly
+non-increasing in $\rho$ and $\eta$, and attains its optimum (unity for the recalls, precisions, $F_1$,
+DetRate, FullRate, and balanced accuracy, and zero for the false-positive and hallucination rates) exactly
 at the ideal point $(p_d,p_a,\rho,\eta)=(1,1,0,0)$.}
 
 The proof is immediate, as each expression is a monotone function of the parameters. The consequence is
@@ -455,8 +455,8 @@ ceiling is exactly a perfect kill-chain reconstruction, as intended.
 \subsection{What a Strong Model Should Achieve}
 The same closed form predicts a strong-but-imperfect near-future model and sets concrete targets. A
 capable detector might reach $p_d=0.95$ and $p_a=0.90$ at $\rho=0.02$; then~\eqref{eq:idev}--\eqref{eq:idrate}
-give event recall $0.95$, technique recall $0.855$, and---because full-chain success is
-exponential---$\mathrm{FullRate}=(0.855)^{n}$, that is $0.53$ for a four-stage chain and $0.39$ for six.
+give event recall $0.95$, technique recall $0.855$, and, because full-chain success is
+exponential, $\mathrm{FullRate}=(0.855)^{n}$, that is $0.53$ for a four-stage chain and $0.39$ for six.
 Requiring $\mathrm{FullRate}\ge\theta$ on chains of length $n$ imposes a per-stage bar
 \begin{equation}
 p_d\,p_a \;\ge\; \theta^{1/n}, \label{eq:threshold}
@@ -466,8 +466,8 @@ $p_d\,p_a\ge 0.84$. Only near-perfect per-stage reconstruction yields reliable w
 which is precisely why full-chain success is the benchmark's hardest bar.
 
 Finally, the model frames the experiments as a measurement of $(p_d,p_a)$, as Fig.~\ref{fig:capplane}
-makes visual. Substituting the regime a current mid-sized open model occupies---strong detection but weak
-attribution, $p_d\approx0.9$, $p_a\approx0.06$, with $\rho$ small---\eqref{eq:idev}--\eqref{eq:idrate}
+makes visual. Substituting the regime a current mid-sized open model occupies (strong detection but weak
+attribution, $p_d\approx0.9$, $p_a\approx0.06$, with $\rho$ small), \eqref{eq:idev}--\eqref{eq:idrate}
 predict technique recall $\approx0.05$--$0.08$, $\mathrm{DetRate}\approx1$, and
 $\mathrm{FullRate}\approx0$. This is exactly the pattern Section~\ref{sec:results} reports, so the
 experiments can be read as locating each arm on the $(p_d,p_a)$ plane: today's systems sit in the
@@ -480,7 +480,7 @@ almost entirely in attribution $p_a$, not detection.
 \caption{The capability plane. Technique recall equals $p_d\,p_a$ (shaded contours); the event lens
 measures $p_d$ and the technique-to-event ratio measures $p_a$. A perfect reconstructor sits at the ideal
 corner $(1,1)$; a strong near-future model near $(0.95,0.90)$; today's mid-sized open models in the
-high-$p_d$, low-$p_a$ corner. The remaining path to the ideal is almost vertical---gains must come from
+high-$p_d$, low-$p_a$ corner. The remaining path to the ideal is almost vertical: gains must come from
 attribution, not detection.}
 \label{fig:capplane}
 \end{figure}
@@ -495,8 +495,8 @@ We report metrics under two lenses: technique-level metrics use parent-technique
 while event-level metrics ignore the technique label and ask only whether the right events were found.
 Beyond recall (the fraction of true attack events found) and precision (the fraction of flagged events
 that are genuine), we report a fuller set of standard classification metrics recovered from the full
-event-level confusion matrix, because event detection is highly \emph{imbalanced}---attack events are a
-small minority---a regime in which raw accuracy is misleading. The \emph{$F_1$ score} is the harmonic
+event-level confusion matrix, because event detection is highly \emph{imbalanced} (attack events are a
+small minority), a regime in which raw accuracy is misleading. The \emph{$F_1$ score} is the harmonic
 mean of recall and precision, rewarding a method only when both are high. The \emph{false-positive rate}
 (FPR) is the fraction of benign events that are wrongly flagged, and \emph{specificity} is its
 complement, the fraction of benign events correctly left alone; a noisy detector has high FPR and low
@@ -510,7 +510,7 @@ $d_z$, and Holm--Bonferroni-corrected permutation $p$-values; other comparisons 
 \subsection{The Two Scoring Lenses: the Central Finding}
 The two lenses tell almost opposite stories, as Table~\ref{tab:twolens} and Fig.~\ref{fig:twolens}
 show. Under the strict technique-level lens the language-model arms score very low on multi-stage
-kill chains---recall of 0.070, 0.035, and 0.080 for A1, A2, and A3---while the rule-based arm A4
+kill chains (recall of 0.070, 0.035, and 0.080 for A1, A2, and A3) while the rule-based arm A4
 reaches 0.867. The event-level lens overturns this reading: the same model arms find between 0.762 and
 0.894 of the true attack events, at very high precision (0.815, 0.952, and a perfect 1.000 for A3),
 whereas the rules reach high event recall (0.967) but far lower event precision (0.649). When the
@@ -535,7 +535,7 @@ A1 & 0.070 & 0.066 & 0.894 & 0.815 & 1814 \\
 A2 & 0.035 & 0.039 & 0.762 & 0.952 & 1314 \\
 A3 & 0.080 & 0.113 & 0.816 & \textbf{1.000} & 1393 \\
 A4 (rules) & \textbf{0.867} & 0.474 & 0.967 & 0.649 & 0 \\
-SIGMA & 0.739 & 0.433 & --- & --- & 0 \\
+Sigma & 0.739 & 0.433 & n/a & n/a & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -553,7 +553,7 @@ rule-based arm sits far to the right at a high false-positive rate. For a securi
 where analyst time is scarce, the model's high precision is the more valuable property.
 
 The richer classification metrics defined above, reported in Table~\ref{tab:extended}, reinforce this
-finding. On the MCC---the single balanced score for imbalanced detection---the raw
+finding. On the MCC (the single balanced score for imbalanced detection) the raw
 language-model arm reaches $0.745$ against the rules' $0.393$, nearly double, and it records an FPR of
 $0.000$ against the rules' $0.750$: the rules flag three of every four non-attack events, whereas the
 model flags essentially none. Balanced accuracy ($0.889$ vs.\ $0.620$) and specificity ($1.000$ vs.\
@@ -686,8 +686,8 @@ H2 & A1 vs A2 $F_1$  & $+0.027$ [$-0.051,0.118$]  & Fail to reject \\
 Because both models ran over identical events, Table~\ref{tab:scale} and Fig.~\ref{fig:scale_fig}
 isolate model size. A validity check appears first: the
 rules produce identical scores under both models (0.867), as they must. On technique-level recall
-(Fig.~\ref{fig:scalems}), scaling helps modestly---A1 rises 0.024 to 0.070 and A3 0.017 to
-0.080---but stays an order of magnitude below the rules. The event level is more striking (Table~\ref{tab:scale};
+(Fig.~\ref{fig:scalems}), scaling helps modestly (A1 rises 0.024 to 0.070 and A3 0.017 to
+0.080) but stays an order of magnitude below the rules. The event level is more striking (Table~\ref{tab:scale};
 the 7B and 32B operating points nearly coincide in the ROC space of Fig.~\ref{fig:roc}): the two models
 are almost indistinguishable, with even the 7B model at $\sim$0.90 recall and $\sim$0.90 precision. The model's useful capability, locating attack events, does not
 require a large model, whereas the capability that improves with scale, exact naming, remains too
@@ -722,8 +722,8 @@ multi-stage category and (b) by category for arm A1. Scaling helps naming only s
 
 \subsection{Where Attribution Breaks}
 Fig.~\ref{fig:conf} dissects the reference arm's technique assignments. The failures are systematic
-rather than random: the model names distinctive techniques reliably---brute-force credential attacks
-every time---but struggles wherever several techniques share an observable footprint. Some errors are
+rather than random: the model names distinctive techniques reliably (brute-force credential attacks
+every time) but struggles wherever several techniques share an observable footprint. Some errors are
 within-family substitutions that parent-technique credit partly absorbs (for example, temporary elevated
 access credited to its parent), while others cross ATT\&CK tactics entirely, such as labeling
 network-discovery events as infrastructure modification. Fig.~\ref{fig:confscale} asks whether a larger
@@ -732,14 +732,14 @@ handles but changes little on the many both models miss. The attribution bottlen
 rooted in the ambiguity of the telemetry, not dissolved by a bigger model.
 
 We quantify these behaviors with four task-specific reliability metrics in Table~\ref{tab:taskspec}. No
-multi-stage attack went entirely unnoticed---every arm achieves a $100\%$ \emph{detection-success rate},
-flagging at least one true attack event in every scenario---yet the \emph{full-chain success rate},
+multi-stage attack went entirely unnoticed: every arm achieves a $100\%$ \emph{detection-success rate},
+flagging at least one true attack event in every scenario, yet the \emph{full-chain success rate},
 reconstructing every stage correctly, is $0\%$ for the language model against $60\%$ for the rules. The
 \emph{hallucination rate}, the fraction of proposals naming a technique outside the benchmark's closed
 vocabulary despite the label set being supplied in the prompt, is low at 32B ($\le 1.8\%$) but rises
 sharply for the smaller 7B model (to $6$--$10\%$): the vocabulary constraint suppresses hallucination
 without eliminating it, and scale helps markedly. Finally, comparing \emph{tactic-level
-accuracy}---whether the assigned technique at least shares the true technique's ATT\&CK tactic---against
+accuracy} (whether the assigned technique at least shares the true technique's ATT\&CK tactic) against
 exact technique accuracy tests for a family-level signal: the 32B model labels the exact technique on
 only $4$--$8\%$ of attack events but a same-tactic technique on $14$--$22\%$. This weak doubling reveals
 a limited family-level understanding; but because tactic accuracy still trails the rules' $97\%$ by a
@@ -764,7 +764,7 @@ where $\mathbf{1}[\cdot]$ is the indicator function. The two success rates brack
 scenario from opposite ends. The detection-success rate~\eqref{eq:detrate} is the most lenient: a
 scenario counts as solved the moment the arm flags even one of its true attack events, so it asks only
 whether the attack was noticed at all. The full-chain success rate~\eqref{eq:fullrate} is its strict
-complement, crediting a scenario only when \emph{every} ground-truth stage is matched---the complete
+complement, crediting a scenario only when \emph{every} ground-truth stage is matched, the complete
 reconstruction an analyst ultimately needs. The distance between the two is itself informative: a high
 detection rate beside a low full-chain rate means an arm reliably senses that something is wrong but
 rarely rebuilds the whole chain, which is exactly the pattern we observe for the language model.
@@ -823,8 +823,8 @@ domain, whereas the single agent needs $\sim$1314 tokens; since the two are stat
 indistinguishable, the multi-agent premium buys nothing. Removing the pre-filter raises token cost
 only slightly (1314 to 1393) but improves event recall (0.762 to 0.816), so the pre-filter discards
 real detections for a small saving. The rules and Sigma incur no model cost. Finally, the independent
-Sigma baseline reaches technique-level recall 0.739 on multi-stage---between the model arms at
-$\sim$0.12 and the tuned rules at 0.867---confirming the rules' dominance is real and not an artifact
+Sigma baseline reaches technique-level recall 0.739 on multi-stage (between the model arms at
+$\sim$0.12 and the tuned rules at 0.867), confirming the rules' dominance is real and not an artifact
 of a deliberately weak comparison.
 
 \begin{figure}[t]
@@ -840,8 +840,8 @@ the cross-source delivery lags that characterize real cloud telemetry, where adm
 minutes late while network and compute logs arrive within seconds. For each multi-stage scenario we take
 the ground-truth candidates, shift the timestamps of one telemetry source by an offset $\Delta T$, and
 re-run the correlator, sweeping $\Delta T$ from $-900$ to $+900$ seconds. Figure~\ref{fig:tcp} reports
-the outcome. Detection recall is completely invariant to $\Delta T$---the matching function keys on
-techniques and evidence, not timestamps---so any change is a pure \emph{ordering} effect. The
+the outcome. Detection recall is completely invariant to $\Delta T$ (the matching function keys on
+techniques and evidence, not timestamps), so any change is a pure \emph{ordering} effect. The
 order-aware recall stays perfect within a robust band of about $\pm 120$ seconds and then degrades,
 falling to $0.84$ at the extremes. The practical implication matters: because the gap between
 CloudTrail's delivery lag ($\sim$7 minutes) and a compute log's ($\sim$30 seconds) far exceeds $120$
@@ -941,16 +941,16 @@ already in use? By fixing the model, telemetry, and compute budget and varying o
 the benchmark makes that question measurable instead of rhetorical.
 
 The central result separates two capabilities rather than declaring a winner. A mid-sized open language
-model detects cross-domain attack events broadly and at higher precision than deterministic rules---on the
+model detects cross-domain attack events broadly and at higher precision than deterministic rules (on the
 multi-stage category its false-positive rate is effectively zero against the rules' $0.75$, and its
-Matthews correlation coefficient is nearly double---yet it fails at exact ATT\&CK-technique attribution,
+Matthews correlation coefficient is nearly double), yet it fails at exact ATT\&CK-technique attribution,
 where hand-tuned rules dominate because they encode the answer. These attribution errors are systematic
-confusions among related techniques---often across ATT\&CK tactics, not only within them---rather than
+confusions among related techniques (often across ATT\&CK tactics, not only within them) rather than
 random noise, and they persist as the model is scaled
 from seven to thirty-two billion parameters: scaling improves naming only slightly and leaves event
 detection, already strong at the smaller size, essentially unchanged. Both pre-registered hypotheses
-resolved as negatives---the language model does not beat the rules on strict technique recall, and
-multi-agent decomposition adds no measurable value over a single agent while costing more---and an
+resolved as negatives: the language model does not beat the rules on strict technique recall, and
+multi-agent decomposition adds no measurable value over a single agent while costing more; and an
 enabled managed detector produced no relevant findings, a null we report rather than omit. For
 a security operations center, the practical reading is clear: a language model is a promising
 high-precision triage and correlation aid, surfacing the events that matter with few false alarms, while
@@ -1005,7 +1005,7 @@ without re-incurring cloud cost.
 \bibitem{acseeval} S. Munshi, S. Pathak, S. Ghatode, T. Priyadarshini, D. Chandramouleeswaran, and A. Rana, ``ACSE-Eval: Can LLMs Threat Model Real-World Cloud Infrastructure?,'' arXiv:2505.11565, 2025.
 \bibitem{provsurvey} M. U. Rehman \emph{et al.}, ``Provenance-based Intrusion Detection Systems: A Survey,'' \emph{ACM Computing Surveys}, 2022.
 \bibitem{tbdetector} N. Wang \emph{et al.}, ``TBDetector: Transformer-Based Detector for Advanced Persistent Threats with Provenance Graph,'' arXiv:2304.02838, 2023.
-\bibitem{sigma} SigmaHQ, ``Sigma --- Generic Signature Format for SIEM Systems.'' [Online]. Available: github.com/SigmaHQ/sigma
+\bibitem{sigma} SigmaHQ, ``Sigma: Generic Signature Format for SIEM Systems.'' [Online]. Available: github.com/SigmaHQ/sigma
 \bibitem{mukherjee} A. Mukherjee and M. Kantarcioglu, ``Provenance-Based Agentic Threat Hunting with RAG and Chain-of-Thought,'' 2025.
 \bibitem{stratus} Datadog, ``Stratus Red Team: Adversary Emulation for the Cloud.'' [Online]. Available: github.com/DataDog/stratus-red-team
 \bibitem{cloudgoat} Rhino Security Labs, ``CloudGoat: Vulnerable-by-Design AWS Environment.'' [Online]. Available: github.com/RhinoSecurityLabs/cloudgoat
